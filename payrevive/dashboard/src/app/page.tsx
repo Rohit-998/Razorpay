@@ -4,13 +4,21 @@ import { useEffect, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
-  ArrowDownRight,
   DollarSign,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
   Zap,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell
+} from "recharts";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -24,21 +32,44 @@ interface Stats {
   recovery_rate: number;
 }
 
+interface Payment {
+  payment_id: string;
+  amount: number;
+  method: string;
+  bank: string | null;
+  error_reason: string;
+  created_at: string;
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Fetch stats
     fetch(`${API_URL}/api/v1/dashboard/stats`)
       .then((r) => r.json())
       .then(setStats)
-      .catch(() => setStats(null))
+      .catch(() => setStats(null));
+
+    // Fetch recent payments
+    fetch(`${API_URL}/api/v1/payments?limit=5`)
+      .then((r) => r.json())
+      .then((data) => setRecentPayments(data.payments || []))
+      .catch(() => setRecentPayments([]))
       .finally(() => setLoading(false));
   }, []);
 
   const formatAmount = (paise: number) => {
     return `₹${(paise / 100).toLocaleString("en-IN")}`;
   };
+
+  const funnelData = stats ? [
+    { name: "Total Failed", value: stats.total_failed, color: "#ef4444" },
+    { name: "Attempted Recovery", value: stats.total_failed - stats.total_escalated, color: "#3b82f6" },
+    { name: "Recovered", value: stats.total_recovered, color: "#22c55e" },
+  ] : [];
 
   return (
     <div className="min-h-screen p-6">
@@ -92,25 +123,66 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Placeholder sections */}
+      {/* Main Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Live Feed */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-green-400" />
             Live Recovery Feed
           </h2>
-          <p className="text-gray-500 text-sm">
-            Run the batch pipeline to see live recovery events here.
-          </p>
+          
+          <div className="space-y-4">
+            {loading ? (
+              <p className="text-gray-500 text-sm">Loading...</p>
+            ) : recentPayments.length === 0 ? (
+              <p className="text-gray-500 text-sm">No payments found. Run batch pipeline.</p>
+            ) : (
+              recentPayments.map((p) => (
+                <div key={p.payment_id} className="flex items-center justify-between p-3 bg-gray-950 rounded-lg border border-gray-800">
+                  <div>
+                    <p className="font-medium text-sm">{p.payment_id}</p>
+                    <p className="text-xs text-gray-500 uppercase">{p.method} • {p.bank || 'N/A'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-sm">{formatAmount(p.amount)}</p>
+                    <p className="text-xs text-red-400">{p.error_reason.replace(/_/g, ' ')}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
+
+        {/* Funnel Chart */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-blue-400" />
             Recovery Funnel
           </h2>
-          <p className="text-gray-500 text-sm">
-            Recovery funnel chart will render after batch data is available.
-          </p>
+          
+          <div className="h-64 w-full mt-4">
+            {loading || funnelData.length === 0 ? (
+              <p className="text-gray-500 text-sm flex items-center justify-center h-full">Loading data...</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
+                  <XAxis type="number" stroke="#9ca3af" />
+                  <YAxis dataKey="name" type="category" stroke="#9ca3af" width={120} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+                    itemStyle={{ color: '#e5e7eb' }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {funnelData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
       </div>
     </div>

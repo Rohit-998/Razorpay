@@ -8,6 +8,8 @@ from app.cache.redis_client import redis_client
 from app.db.database import get_supabase
 from app.models.schemas import FailedPayment, PaymentMethod, ErrorSource
 from datetime import datetime
+from arq import create_pool
+from app.worker import parse_redis_url
 import structlog
 
 logger = structlog.get_logger()
@@ -102,7 +104,13 @@ async def razorpay_webhook(request: Request):
         logger.error("webhook.store_failed", payment_id=payment_id, error=str(e))
         raise HTTPException(status_code=500, detail="Failed to store payment")
 
-    # 5. TODO: Queue for processing via ARQ worker
-    # await arq_queue.enqueue("process_failed_payment", payment_id=payment_id)
+    # 5. Queue for processing via ARQ worker
+    try:
+        arq_redis = await create_pool(parse_redis_url(settings.redis_url))
+        await arq_redis.enqueue_job("process_failed_payment", payment_id)
+        logger.info("webhook.enqueued", payment_id=payment_id)
+    except Exception as e:
+        logger.error("webhook.enqueue_failed", payment_id=payment_id, error=str(e))
+        # Don't fail the request if queueing fails, we have it in DB
 
     return {"status": "accepted", "payment_id": payment_id}
