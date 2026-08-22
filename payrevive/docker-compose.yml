@@ -1,0 +1,58 @@
+version: '3.8'
+
+# ============================================================
+# PayRevive — Docker Compose
+# App services run in Docker. PostgreSQL (Supabase) and 
+# Redis (Redis Cloud) are hosted externally — configure via .env
+# ============================================================
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./backend:/app
+      - model_data:/app/app/ml/model_artifacts
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - payrevive
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    volumes:
+      - ./backend:/app
+      - model_data:/app/app/ml/model_artifacts
+    command: arq app.worker.WorkerSettings
+    networks:
+      - payrevive
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_KEY}
+    volumes:
+      - ./dashboard/src:/app/src
+      - ./dashboard/public:/app/public
+    command: npm run dev
+    networks:
+      - payrevive
+
+volumes:
+  model_data:
+
+networks:
+  payrevive:
+    driver: bridge

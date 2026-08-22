@@ -1,0 +1,48 @@
+# Environment
+.env
+.env.local
+.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# ML model artifacts (tracked via DVC or manual)
+backend/app/ml/model_artifacts/*.pkl
+backend/app/ml/model_artifacts/*.joblib
+!backend/app/ml/model_artifacts/.gitkeep
+
+# Node
+node_modules/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+postgres_data/
+redis_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
