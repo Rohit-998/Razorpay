@@ -218,14 +218,17 @@ class RootCauseClassifier:
 
         # Evaluate
         y_pred = self.model.predict(X_test)
+        labels_idx = list(range(len(self.label_encoder.classes_)))
         report = classification_report(
             y_test, y_pred,
+            labels=labels_idx,
             target_names=self.label_encoder.classes_,
             output_dict=True,
+            zero_division=0,
         )
         accuracy = report["accuracy"]
         macro_f1 = report["macro avg"]["f1-score"]
-        conf_matrix = confusion_matrix(y_test, y_pred).tolist()
+        conf_matrix = confusion_matrix(y_test, y_pred, labels=labels_idx).tolist()
 
         # Create SHAP explainer
         self.explainer = shap.TreeExplainer(self.model)
