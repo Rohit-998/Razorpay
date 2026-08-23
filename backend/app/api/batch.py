@@ -202,7 +202,8 @@ async def run_batch_pipeline():
                 results["failed"] += 1
 
         except Exception as e:
-            logger.error("batch.payment_error", payment_id=session["payment_id"], error=str(e))
+            import traceback
+            logger.error("batch.payment_error", payment_id=session["payment_id"], error=str(e), tb=traceback.format_exc())
             results["failed"] += 1
 
     return {"status": "complete", "results": results}

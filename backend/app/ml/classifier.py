@@ -164,20 +164,29 @@ class RootCauseClassifier:
         data = features.to_dict()
         explanations = []
 
-        # shap_values for multi-class: list of arrays (old SHAP) or 3D array (new SHAP)
-        if isinstance(shap_values, list):
-            sv = shap_values[predicted_idx][0]
-        elif hasattr(shap_values, 'ndim') and shap_values.ndim == 3:
-            # New SHAP: shape (n_samples, n_features, n_classes)
-            sv = shap_values[0, :, predicted_idx]
-        else:
-            sv = shap_values[0]
+        # Safely extract 1D SHAP vector for the predicted class
+        try:
+            sv_array = np.array(shap_values)
+            if sv_array.ndim == 3:
+                # shape (n_samples, n_features, n_classes)
+                sv = sv_array[0, :, predicted_idx].flatten()
+            elif isinstance(shap_values, list):
+                # list of (n_samples, n_features) arrays, one per class
+                sv = np.array(shap_values[predicted_idx][0]).flatten()
+            elif sv_array.ndim == 2:
+                sv = sv_array[0].flatten()
+            else:
+                sv = sv_array.flatten()
+        except Exception:
+            sv = np.zeros(len(ALL_FEATURE_NAMES))
 
         predicted_class = self.label_encoder.inverse_transform([predicted_idx])[0]
 
         for i, fname in enumerate(ALL_FEATURE_NAMES):
-            raw_val = sv[i] if i < len(sv) else 0.0
-            shap_val = float(np.float64(raw_val)) if hasattr(raw_val, '__len__') is False or np.ndim(raw_val) == 0 else float(np.mean(raw_val))
+            if i < len(sv):
+                shap_val = float(sv[i]) if np.ndim(sv[i]) == 0 else float(np.mean(sv[i]))
+            else:
+                shap_val = 0.0
             direction = f"→ {predicted_class}" if shap_val < 0 else f"← {predicted_class}"
 
             explanations.append(ShapExplanation(
