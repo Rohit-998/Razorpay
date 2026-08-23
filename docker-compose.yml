@@ -33,9 +33,9 @@ services:
     networks:
       - payrevive
 
-  dashboard:
+  frontend:
     build:
-      context: ./dashboard
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
@@ -44,8 +44,8 @@ services:
       - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_KEY}
     volumes:
-      - ./dashboard/src:/app/src
-      - ./dashboard/public:/app/public
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     command: npm run dev
     networks:
       - payrevive
