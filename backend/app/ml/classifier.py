@@ -164,16 +164,20 @@ class RootCauseClassifier:
         data = features.to_dict()
         explanations = []
 
-        # shap_values for multi-class: list of arrays, one per class
+        # shap_values for multi-class: list of arrays (old SHAP) or 3D array (new SHAP)
         if isinstance(shap_values, list):
             sv = shap_values[predicted_idx][0]
+        elif hasattr(shap_values, 'ndim') and shap_values.ndim == 3:
+            # New SHAP: shape (n_samples, n_features, n_classes)
+            sv = shap_values[0, :, predicted_idx]
         else:
             sv = shap_values[0]
 
         predicted_class = self.label_encoder.inverse_transform([predicted_idx])[0]
 
         for i, fname in enumerate(ALL_FEATURE_NAMES):
-            shap_val = float(sv[i]) if i < len(sv) else 0.0
+            raw_val = sv[i] if i < len(sv) else 0.0
+            shap_val = float(np.float64(raw_val)) if hasattr(raw_val, '__len__') is False or np.ndim(raw_val) == 0 else float(np.mean(raw_val))
             direction = f"→ {predicted_class}" if shap_val < 0 else f"← {predicted_class}"
 
             explanations.append(ShapExplanation(
