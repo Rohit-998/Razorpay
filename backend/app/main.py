@@ -53,11 +53,10 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"status": "error", "message": str(exc), "traceback": traceback.format_exc()}
     )
 
-# CORS
-settings = get_settings()
+# CORS — allow all origins for buildathon demo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
