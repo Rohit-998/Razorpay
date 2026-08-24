@@ -36,3 +36,15 @@ export function SettingsGlyph(props: IconProps) {
 export function Check(props: IconProps) {
   return <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}><path d="m4 10.5 3.8 3.8L16 6.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
+
+export function ListIcon(props: IconProps) {
+  return <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+}
+
+export function PipelineIcon(props: IconProps) {
+  return <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}><path d="M2 10h4l2-4 3 8 2-6 2 2h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /><circle cx="5" cy="10" r="1.5" fill="currentColor" /><circle cx="15" cy="10" r="1.5" fill="currentColor" /></svg>;
+}
+
+export function ChartIcon(props: IconProps) {
+  return <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}><path d="M3 17V9m4.5 8V6M11 17V3m4.5 14V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>;
+}

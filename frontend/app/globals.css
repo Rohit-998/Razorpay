@@ -197,6 +197,15 @@ body { font-family: var(--sans); }
 /* Model-control page uses the same visual language */
 .topline { min-height: auto; padding-bottom: 15px; border-bottom: 1px solid #dfe7e1; }.topline .eyebrow { color: #6c7b73; }.model-version { color: #6b7b72; }.model-version b { color: #167a4d; }.settings-header { max-width: 650px; padding: 46px 0 28px; }.settings-header h1 { color: #18241f; font: 700 clamp(30px, 3.5vw, 46px)/1.08 var(--sans); letter-spacing: -.065em; }.settings-header h1 i { color: inherit; font-family: inherit; font-style: normal; }.settings-header p:last-child { color: #66766e; font-size: 13px; }.train-console { padding: 25px; border: 1px solid #dce6df; border-radius: 10px; background: #ffffff; }.train-copy h2 { color: #23332b; }.train-copy p { color: #6b7a72; font-size: 12px; }.train-button { color: #ffffff; background: #167a4d; border-radius: 6px; box-shadow: none; }.train-button:hover:not(:disabled) { background: #0e6840; transform: none; box-shadow: none; }.evaluation-area { margin-top: 45px; }.evaluation-heading h2 { color: #23332b; }.results-grid { gap: 14px; background: none; border: 0; }.result-stat, .matrix-card { min-height: 165px; border: 1px solid #dce6df; border-radius: 9px; background: #ffffff; }.result-stat > span, .matrix-card > span { color: #718078; }.result-stat strong { color: #167a4d; }.matrix-row b { color: #ffffff; background: #2d9565; }.json-panel { border: 1px solid #dce6df; border-radius: 9px; background: #ffffff; }.json-panel span { color: #5e6e65; }.json-panel pre { color: #176b45; background: #f5f8f6; border-left-color: #dce6df; }
 
+/* Pipeline step states */
+.pipeline-step b { transition: background .3s, color .3s; }
+.pipeline-step.running b { background: #d4a847; color: #fff; }
+.pipeline-step.complete b { background: #29a66b; color: #fff; }
+.pipeline-step.error b { background: #d17a73; color: #fff; }
+.pipeline-step.running span { color: #a08530; }
+.pipeline-step.complete span { color: #168354; }
+.pipeline-step.error span { color: #c0524b; }
+
 @media (max-width: 920px) {
   .rail { position: relative; width: auto; }.workspace { width: 100%; margin-left: 0; }.simple-summary-grid { grid-template-columns: 1.2fr 1fr; }.simple-stat:last-child { grid-column: 1 / -1; }.simple-facts { grid-template-columns: repeat(3, 1fr); }.simple-facts > div:nth-child(3) { border-right: 0; }.simple-facts > div:nth-child(-n + 3) { border-bottom: 1px solid #e2e9e4; }.simple-diagnosis { align-items: start; }.simple-action-heading { grid-template-columns: 50px minmax(0, 1fr); }.simple-action-status { grid-column: 1 / -1; padding: 13px 0 0; border-top: 1px solid #e1e9e3; border-left: 0; }
 }
