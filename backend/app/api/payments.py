@@ -18,16 +18,29 @@ async def get_payment(payment_id: str):
     """Get payment detail with recovery session and audit trail."""
     db = get_supabase()
 
-    # Use maybe_single to avoid error when no row found
-    payment = db.table("payments").select("*").eq("payment_id", payment_id).maybe_single().execute()
-    if not payment.data:
+    try:
+        result = db.table("payments").select("*").eq("payment_id", payment_id).execute()
+        payment_data = result.data[0] if result and result.data else None
+    except Exception:
+        payment_data = None
+
+    if not payment_data:
         raise HTTPException(status_code=404, detail=f"Payment {payment_id} not found")
 
-    session = db.table("recovery_sessions").select("*").eq("payment_id", payment_id).execute()
-    audit = db.table("audit_events").select("*").eq("payment_id", payment_id).order("created_at").execute()
+    try:
+        session = db.table("recovery_sessions").select("*").eq("payment_id", payment_id).execute()
+        session_data = session.data[0] if session and session.data else None
+    except Exception:
+        session_data = None
+
+    try:
+        audit = db.table("audit_events").select("*").eq("payment_id", payment_id).order("created_at").execute()
+        audit_data = audit.data if audit and audit.data else []
+    except Exception:
+        audit_data = []
 
     return {
-        "payment": payment.data,
-        "session": session.data[0] if session.data else None,
-        "audit_trail": audit.data or [],
+        "payment": payment_data,
+        "session": session_data,
+        "audit_trail": audit_data,
     }
