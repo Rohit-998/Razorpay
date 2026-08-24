@@ -91,7 +91,7 @@ function normalizeStatus(value: unknown): RecoveryStatus {
 
 function normalizePayment(raw: Record<string, unknown>): PaymentSummary {
   return {
-    id: String(raw.id ?? raw.payment_id ?? raw.paymentId ?? "unknown"),
+    id: String(raw.payment_id ?? raw.id ?? raw.paymentId ?? "unknown"),
     amount: numberFrom(raw.amount ?? raw.amount_inr ?? raw.value),
     currency: String(raw.currency ?? "INR"),
     bank: String(raw.bank ?? raw.bank_name ?? raw.issuer ?? "—"),
@@ -129,7 +129,7 @@ export async function getPayment(paymentId: string): Promise<PaymentDetails> {
   const guardrails = recovery.guardrails ?? recovery.stopping_rules ?? raw.guardrails ?? raw.stopping_rules;
 
   return {
-    id: String(raw.id ?? raw.payment_id ?? paymentId),
+    id: String(raw.payment_id ?? raw.id ?? paymentId),
     amount: numberFrom(raw.amount ?? raw.amount_inr),
     currency: String(raw.currency ?? "INR"),
     bank: String(raw.bank ?? raw.bank_name ?? raw.issuer ?? "—"),
