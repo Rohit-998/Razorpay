@@ -1,5 +1,5 @@
 """Payments API — list and detail views."""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.db.database import get_supabase
 
 router = APIRouter()
@@ -17,7 +17,12 @@ async def list_payments(limit: int = 50, offset: int = 0):
 async def get_payment(payment_id: str):
     """Get payment detail with recovery session and audit trail."""
     db = get_supabase()
-    payment = db.table("payments").select("*").eq("payment_id", payment_id).single().execute()
+
+    # Use maybe_single to avoid error when no row found
+    payment = db.table("payments").select("*").eq("payment_id", payment_id).maybe_single().execute()
+    if not payment.data:
+        raise HTTPException(status_code=404, detail=f"Payment {payment_id} not found")
+
     session = db.table("recovery_sessions").select("*").eq("payment_id", payment_id).execute()
     audit = db.table("audit_events").select("*").eq("payment_id", payment_id).order("created_at").execute()
 
