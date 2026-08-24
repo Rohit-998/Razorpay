@@ -95,7 +95,7 @@ class LLMReasoner:
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-3.6-flash",
                 contents=f"{SYSTEM_PROMPT}\n\n---\n\nPAYMENT CONTEXT:\n{context}",
                 config=GenerateContentConfig(
                     response_mime_type="application/json",
