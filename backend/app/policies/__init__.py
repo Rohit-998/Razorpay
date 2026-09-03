@@ -10,18 +10,21 @@ The set is deliberately ordered from "does nothing" to "cheats":
     do_nothing    the counterfactual; recovers whatever came back unaided
     naive_retry   the incumbent: three retries on a timer, then a blast
     rules         a strong hand-written expert policy — the bar to beat
+    payrevive     this project's proposal: expected value over a fitted model
     oracle        full latent knowledge; the ceiling, not a result
 """
 
 from app.policies.base import BasePolicy, Policy, run_episode
 from app.policies.baselines import DoNothingPolicy, NaiveRetryPolicy
 from app.policies.oracle import OraclePolicy
+from app.policies.payrevive import PayRevivePolicy
 from app.policies.rules import RulesPolicy
 
 LADDER = {
     "do_nothing": lambda env: DoNothingPolicy(),
     "naive_retry": lambda env: NaiveRetryPolicy(),
     "rules": lambda env: RulesPolicy(),
+    "payrevive": lambda env: PayRevivePolicy(env),
     "oracle": lambda env: OraclePolicy(env),
 }
 """The ladder, in reporting order. Built per batch rather than once, because the
@@ -35,6 +38,7 @@ __all__ = [
     "DoNothingPolicy",
     "NaiveRetryPolicy",
     "OraclePolicy",
+    "PayRevivePolicy",
     "Policy",
     "RulesPolicy",
     "run_episode",
