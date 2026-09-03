@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from app.policies.base import MAX_STEPS_PER_EPISODE
@@ -407,6 +408,30 @@ class Comparison:
     @property
     def is_shippable(self) -> bool:
         return not self.blocking_violations
+
+
+def merge_causes(breakdowns: Iterable[CauseBreakdown]) -> dict[str, CauseBreakdown]:
+    """Pool per-batch cause slices into one, summing rupees rather than averaging.
+
+    Averaging per-batch recovery rates by cause would weight a seed that produced
+    three `MERCHANT_ERROR` payments the same as one that produced forty, and the rare
+    causes are exactly the ones where the rates are most unstable.
+    """
+    pooled: dict[str, list[CauseBreakdown]] = defaultdict(list)
+    for breakdown in breakdowns:
+        pooled[breakdown.cause].append(breakdown)
+    return {
+        cause: CauseBreakdown(
+            cause=cause,
+            payments=sum(b.payments for b in group),
+            at_risk_rupees=sum(b.at_risk_rupees for b in group),
+            recovered_rupees=sum(b.recovered_rupees for b in group),
+            system_recovered_rupees=sum(b.system_recovered_rupees for b in group),
+            spend_rupees=sum(b.spend_rupees for b in group),
+            escalations=sum(b.escalations for b in group),
+        )
+        for cause, group in sorted(pooled.items())
+    }
 
 
 def compare(

@@ -29,7 +29,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from app.eval.metrics import BatchMetrics, Comparison, collect, compare
+from app.eval.metrics import (
+    BatchMetrics,
+    CauseBreakdown,
+    Comparison,
+    collect,
+    compare,
+    merge_causes,
+)
 from app.policies.base import Policy, run_episode
 from app.sim.environment import RecoveryEnv
 from app.sim.scenarios import SCENARIOS, Scenario
@@ -158,6 +165,51 @@ class PolicyOnScenario:
     def total_achievable_rupees(self) -> float | None:
         values = [c.achievable_lift_rupees for c in self.comparisons]
         return None if any(v is None for v in values) else sum(float(v) for v in values)
+
+    @property
+    def total_recovered_rupees(self) -> float:
+        return sum(b.recovered_rupees for b in self.batches)
+
+    @property
+    def total_system_recovered_rupees(self) -> float:
+        return sum(b.system_recovered_rupees for b in self.batches)
+
+    @property
+    def total_ambiguous_rupees(self) -> float:
+        return sum(b.ambiguous_rupees for b in self.batches)
+
+    @property
+    def total_preempted_rupees(self) -> float:
+        return sum(c.preempted_rupees for c in self.comparisons)
+
+    @property
+    def total_contacts(self) -> int:
+        return sum(b.contacts for b in self.batches)
+
+    @property
+    def total_retries(self) -> int:
+        return sum(b.retries for b in self.batches)
+
+    @property
+    def total_escalations(self) -> int:
+        return sum(b.escalations for b in self.batches)
+
+    @property
+    def total_agent_capacity(self) -> int:
+        return sum(b.agent_capacity for b in self.batches)
+
+    @property
+    def median_hours_to_recovery(self) -> float:
+        """Median of the per-batch medians. Good enough for a speed column, and it
+        avoids holding every episode in memory just to re-median them."""
+        values = sorted(b.median_hours_to_recovery for b in self.batches if b.median_hours_to_recovery)
+        if not values:
+            return 0.0
+        mid = len(values) // 2
+        return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2.0
+
+    def merged_by_cause(self) -> dict[str, CauseBreakdown]:
+        return merge_causes(b for batch in self.batches for b in batch.by_cause.values())
 
     @property
     def share_of_achievable_lift(self) -> float | None:
