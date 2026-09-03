@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 
@@ -47,6 +48,14 @@ against, and a learning policy needs somewhere to reset per-batch state."""
 
 BASELINE_POLICY = "do_nothing"
 CEILING_POLICY = "oracle"
+PROPOSAL_POLICY = "payrevive"
+INCUMBENT_POLICY = "rules"
+"""Which rung of the ladder is the submission and which is the thing it has to beat.
+
+Named here rather than hardcoded in the report so that "the proposal" is one fact in
+one place. `rules` is the incumbent because it is what a competent payments team
+writes by hand — fixed backoff, a message, escalate the large ones — and beating a
+strawman proves nothing."""
 
 BOOTSTRAP_RESAMPLES = 10_000
 BOOTSTRAP_SEED = 20260904
@@ -233,6 +242,18 @@ class PolicyOnScenario:
 
     # ── Shippability, pooled across seeds ─────────────────────────────────
 
+    HARD_LIMITS: ClassVar[tuple[str, ...]] = (
+        "quiet_hour_contacts",
+        "invalid_actions",
+        "episodes_at_step_cap",
+    )
+    """The concerns where zero is attainable, and therefore required.
+
+    `self_inflicted_blocks` is measured alongside these but is not one of them: a
+    failed retry kills a working card with fixed probability, so the only policy
+    that blocks nothing is one that retries nothing. Gating on it printed the same
+    verdict against every policy that acted and told a reader nothing."""
+
     @property
     def totals_of_concern(self) -> dict[str, int]:
         return {
@@ -243,8 +264,20 @@ class PolicyOnScenario:
         }
 
     @property
+    def total_live_instrument_payments(self) -> int:
+        """Payments whose card or mandate was still working when they failed — the
+        only ones this policy could possibly have broken."""
+        return sum(b.live_instrument_payments for b in self.batches)
+
+    @property
+    def self_inflicted_block_rate(self) -> float:
+        live = self.total_live_instrument_payments
+        return 0.0 if not live else self.totals_of_concern["self_inflicted_blocks"] / live
+
+    @property
     def is_shippable(self) -> bool:
-        return not any(self.totals_of_concern.values()) and all(
+        totals = self.totals_of_concern
+        return not any(totals[key] for key in self.HARD_LIMITS) and all(
             c.lift_identity_holds for c in self.comparisons
         )
 

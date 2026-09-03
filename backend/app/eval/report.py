@@ -23,7 +23,15 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.eval.harness import BASELINE_POLICY, CEILING_POLICY, EvalRun, Interval, PolicyOnScenario
+from app.eval.harness import (
+    BASELINE_POLICY,
+    CEILING_POLICY,
+    INCUMBENT_POLICY,
+    PROPOSAL_POLICY,
+    EvalRun,
+    Interval,
+    PolicyOnScenario,
+)
 from app.eval.metrics import CauseBreakdown, merge_causes
 
 
@@ -89,9 +97,12 @@ def _policy_json(result: PolicyOnScenario) -> dict:
             "contacts": result.total_contacts,
             "escalations": result.total_escalations,
             "agent_capacity": result.total_agent_capacity,
+            "live_instrument_payments": result.total_live_instrument_payments,
             "median_hours_to_recovery": round(result.median_hours_to_recovery, 2),
         },
         "concerns": result.totals_of_concern,
+        "hard_limits": list(PolicyOnScenario.HARD_LIMITS),
+        "self_inflicted_block_rate": round(result.self_inflicted_block_rate, 6),
         "shippable": result.is_shippable,
         "by_cause": {
             cause: {**asdict(breakdown), "recovery_rate": breakdown.recovery_rate}
@@ -106,6 +117,7 @@ def _policy_json(result: PolicyOnScenario) -> dict:
                 "spend_rupees": round(c.metrics.spend_rupees, 2),
                 "lift_identity_holds": c.lift_identity_holds,
                 "violations": c.blocking_violations,
+                "harms": c.harms,
             }
             for c in result.comparisons
         ],
@@ -195,44 +207,57 @@ def _compliance(run: EvalRun) -> list[str]:
     lines = [
         "## Whether it could actually ship",
         "",
-        "None of these appear in a recovery rate. Each one is a reason a payments team "
-        "would refuse to deploy a policy however much money it appears to make. Counts "
-        f"are totals over all {batches:,} batches, not per batch.",
+        "None of these appear in a recovery rate. The first three are gates — zero is "
+        "attainable for each, so any count above zero is a defect and no amount of lift "
+        "buys it back. The fourth is a cost: a failed retry can kill a working card "
+        "whatever the reason for the failure, so the only policy that blocks nothing is "
+        f"one that retries nothing. Counts are totals over all {batches:,} batches.",
         "",
-        "| Policy | Messages in quiet hours | Instruments we blocked | Actions the gateway "
-        "refused | Failed to stop | Verdict |",
+        "| Policy | Messages in quiet hours | Actions the gateway refused | Failed to stop "
+        "| Working instruments we blocked | Verdict |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
     for policy in run.policies:
         totals = {"quiet_hour_contacts": 0, "self_inflicted_blocks": 0,
                   "invalid_actions": 0, "episodes_at_step_cap": 0}
-        contacts = 0
+        contacts = live = 0
         for scenario in run.scenarios:
             result = run.get(policy, scenario)
             contacts += result.total_contacts
+            live += result.total_live_instrument_payments
             for key, value in result.totals_of_concern.items():
                 totals[key] += value
         quiet = totals["quiet_hour_contacts"]
         quiet_text = f"{quiet:,}" + (f" of {contacts:,}" if quiet else "")
+        blocks = totals["self_inflicted_blocks"]
+        rate = blocks / live if live else 0.0
+        block_text = f"{blocks:,} of {live:,} ({rate:.2%})" if blocks else "0"
         if policy == CEILING_POLICY:
             verdict = "n/a — cheats by construction"
-        elif any(totals.values()):
-            verdict = "**not shippable**"
+        elif any(totals[key] for key in PolicyOnScenario.HARD_LIMITS):
+            verdict = "**fails a gate**"
+        elif blocks:
+            verdict = f"shippable · {rate:.2%} harm rate"
         else:
             verdict = "clean"
         lines.append(
-            f"| `{policy}` | {quiet_text} | {totals['self_inflicted_blocks']:,} | "
-            f"{totals['invalid_actions']:,} | {totals['episodes_at_step_cap']:,} | {verdict} |"
+            f"| `{policy}` | {quiet_text} | {totals['invalid_actions']:,} | "
+            f"{totals['episodes_at_step_cap']:,} | {block_text} | {verdict} |"
         )
     lines += [
         "",
         "Quiet hours are 22:00–08:00 IST, judged against when the message was sent rather "
-        "than when its effects settled. *Instruments we blocked* counts cards and mandates "
-        "that were working at failure time and were killed by our own retries — customers "
-        "left worse off than if nothing had been done. The ceiling's own quiet-hour messages "
-        "are real: nothing forbids them, and for a patient customer at 02:00 the overnight "
-        "read penalty is occasionally worth paying. It is listed to be honest about what the "
-        "upper bound is, not held up as a target.",
+        "than when its effects settled. *Working instruments we blocked* counts cards and "
+        "mandates that were alive at failure time and were killed by our own retries — "
+        "customers left worse off than if nothing had been done — as a share of the "
+        "instruments that were alive to be broken. It is the one number here that is "
+        "underwritten rather than forbidden, and the comparison that matters is against "
+        "the incumbent: a policy is worth deploying if it breaks fewer instruments *and* "
+        "recovers more money, which is a stronger claim than either half alone. The "
+        "ceiling's own quiet-hour messages are real: nothing forbids them, and for a "
+        "patient customer at 02:00 the overnight read penalty is occasionally worth "
+        "paying. It is listed to be honest about what the upper bound is, not held up as "
+        "a target.",
         "",
     ]
     return lines
@@ -287,15 +312,30 @@ def _scenarios(run: EvalRun) -> list[str]:
     return lines
 
 
-def _causes(run: EvalRun, subject: str = "rules") -> list[str]:
+def _causes(
+    run: EvalRun,
+    subject: str = PROPOSAL_POLICY,
+    incumbent: str = INCUMBENT_POLICY,
+) -> list[str]:
     """Where the money is, and where the gap to the ceiling is, by root cause.
 
     Root cause is latent — no policy sees it, and it is not in the error fields in any
     recoverable form. It is in the report because it is the only way to tell a policy
     that diagnoses from one that got lucky on the easy causes.
+
+    The incumbent's column is here because the aggregate lift does not say *what the
+    policy learned*. Two policies can recover the same total by opposite routes, and
+    the claim worth making is narrower than "more money": the gap closed where a
+    diagnosis was the thing missing, and stayed open where the payment was simply
+    unrecoverable.
     """
     if subject not in run.policies or CEILING_POLICY not in run.policies:
         return []
+    show_incumbent = incumbent in run.policies and incumbent != subject
+    header = ["| Root cause", "Payments", "At risk"]
+    if show_incumbent:
+        header.append(f"`{incumbent}`")
+    header += [f"`{subject}`", "Ceiling", "Gap left"]
     lines = [
         f"## By root cause — `{subject}` against the ceiling",
         "",
@@ -303,20 +343,24 @@ def _causes(run: EvalRun, subject: str = "rules") -> list[str]:
         "environment used to decide which physical precondition was false, and no policy "
         "is shown it.",
         "",
-        "| Root cause | Payments | At risk | `" + subject + "` recovered | Ceiling recovered "
-        "| Gap |",
-        "| --- | --- | --- | --- | --- | --- |",
+        " | ".join(header) + " |",
+        "| " + " | ".join(["---"] * len(header)) + " |",
     ]
     mine = _pool(run, subject)
-    theirs = _pool(run, CEILING_POLICY)
+    ceiling = _pool(run, CEILING_POLICY)
+    theirs = _pool(run, incumbent) if show_incumbent else {}
     for cause in sorted(mine, key=lambda c: -mine[c].at_risk_rupees):
-        a, b = mine[cause], theirs[cause]
-        lines.append(
-            f"| `{cause}` | {a.payments:,} | {_lakh(a.at_risk_rupees)} | "
-            f"{_lakh(a.recovered_rupees)} ({a.recovery_rate:.0%}) | "
-            f"{_lakh(b.recovered_rupees)} ({b.recovery_rate:.0%}) | "
-            f"{_lakh(b.recovered_rupees - a.recovered_rupees)} |"
-        )
+        a, top = mine[cause], ceiling[cause]
+        row = [f"| `{cause}`", f"{a.payments:,}", _lakh(a.at_risk_rupees)]
+        if show_incumbent:
+            old = theirs[cause]
+            row.append(f"{_lakh(old.recovered_rupees)} ({old.recovery_rate:.0%})")
+        row += [
+            f"**{_lakh(a.recovered_rupees)} ({a.recovery_rate:.0%})**",
+            f"{_lakh(top.recovered_rupees)} ({top.recovery_rate:.0%})",
+            _lakh(top.recovered_rupees - a.recovered_rupees),
+        ]
+        lines.append(" | ".join(row) + " |")
     lines += [
         "",
         f"A negative gap is not an error and not `{subject}` beating the ceiling. The "
@@ -326,7 +370,48 @@ def _causes(run: EvalRun, subject: str = "rules") -> list[str]:
         "guaranteed to be an upper bound on the total, which is where it is used.",
         "",
     ]
+    if show_incumbent:
+        lines += _cause_reading(mine, theirs, ceiling, subject, incumbent)
     return lines
+
+
+def _cause_reading(
+    mine: dict[str, CauseBreakdown],
+    theirs: dict[str, CauseBreakdown],
+    ceiling: dict[str, CauseBreakdown],
+    subject: str,
+    incumbent: str,
+) -> list[str]:
+    """Name where the gap closed, computed rather than asserted.
+
+    An aggregate lift is compatible with two stories — a policy that diagnoses, and a
+    policy that simply acts more often — and the table above distinguishes them while
+    saying nothing out loud. This says it: for each cause, what share of the distance
+    the incumbent left on the table was recovered. Derived from the same figures, so it
+    cannot drift out of agreement with them the way a hardcoded sentence would.
+    """
+    closed: dict[str, float] = {}
+    for cause, a in mine.items():
+        headroom = ceiling[cause].recovered_rupees - theirs[cause].recovered_rupees
+        if headroom <= 0:
+            continue
+        closed[cause] = (a.recovered_rupees - theirs[cause].recovered_rupees) / headroom
+    if len(closed) < 2:
+        return []
+    ranked = sorted(closed.items(), key=lambda kv: -kv[1])
+    best = ", ".join(f"`{c}` ({share:.0%})" for c, share in ranked[:3])
+    worst = ", ".join(f"`{c}` ({share:.0%})" for c, share in reversed(ranked[-2:]))
+    return [
+        f"**Read across the two policy columns, not down them.** Of the money `{incumbent}` "
+        f"left on the table, `{subject}` recovered most where the failure needed a "
+        f"diagnosis — {best} — and least where `{incumbent}` was already close to the "
+        f"ceiling and there was nothing left to learn: {worst}. That is the shape a "
+        "policy produces when it is reading the failure; a policy that had merely raised "
+        "its action count would show a flat share across every cause, and one that had "
+        "found a hole in the simulator would show its largest gains on the causes with "
+        "the least headroom.",
+        "",
+    ]
 
 
 def _pool(run: EvalRun, policy: str) -> dict[str, CauseBreakdown]:

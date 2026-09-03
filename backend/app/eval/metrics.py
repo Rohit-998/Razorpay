@@ -21,10 +21,17 @@ good dishonestly:
   paid through their own channel shortly after being messaged. It is never counted
   as a win. A policy with a big ambiguous pile is standing next to recoveries.
 
-  `quiet_hour_contacts`, `self_inflicted_blocks` and `invalid_actions` are the
+  `quiet_hour_contacts`, `invalid_actions` and `episodes_at_step_cap` are the
   ways a policy can look profitable while being unshippable: messaging people at
-  3am, hammering a card until the issuer kills it, and proposing actions the
-  gateway would reject. None of them show up in a recovery rate.
+  3am, proposing actions the gateway would reject, and never deciding to stop.
+  None of them show up in a recovery rate, and zero is attainable for all three,
+  so any count above zero is a defect rather than a trade.
+
+  `self_inflicted_blocks` is the one cost that is not a veto — a failed retry can
+  kill a working card whatever the reason for the failure, so the only policy with
+  zero of them is one that never retries. It is reported as a rate against the
+  instruments that were still alive to be broken, and judged against the incumbent's
+  rate rather than against zero.
 
   `regret_vs_oracle_rupees` puts the whole thing in proportion. Recovering ₹4 lakh
   means nothing until you know whether ₹5 lakh or ₹40 lakh was available.
@@ -95,6 +102,7 @@ class BatchMetrics:
     invalid_actions: int
     quiet_hour_contacts: int
     self_inflicted_blocks: int
+    live_instrument_payments: int
     max_contacts_to_one_payment: int
     episodes_at_step_cap: int
     median_hours_to_recovery: float
@@ -127,6 +135,19 @@ class BatchMetrics:
         """Ambiguous rupees as a share of everything the policy recovered. Rises
         when a policy messages people who were coming back anyway."""
         return 0.0 if not self.recovered_rupees else self.ambiguous_rupees / self.recovered_rupees
+
+    @property
+    def self_inflicted_block_rate(self) -> float:
+        """Share of still-working instruments this policy killed.
+
+        Against live instruments rather than all payments, because a card that was
+        already dead at failure time cannot be broken by us and belongs in neither
+        the numerator nor the denominator. `stress_dead_instruments` is half dead
+        cards by construction, so including them would make that scenario look
+        gentler than `baseline` on identical behaviour."""
+        if not self.live_instrument_payments:
+            return 0.0
+        return self.self_inflicted_blocks / self.live_instrument_payments
 
 
 def _median(values: list[float]) -> float:
@@ -217,6 +238,11 @@ def collect(
         self_inflicted_blocks=sum(
             1 for e in episodes if e.instrument_blocked and not e.instrument_dead_at_failure
         ),
+        # The denominator for the line above, and it has to be counted here because
+        # `instrument_dead_at_failure` is latent. A raw block count is unreadable
+        # without it: 80 blocks is a scandal in a batch of 200 live cards and a
+        # rounding error in 27,000.
+        live_instrument_payments=sum(1 for e in episodes if not e.instrument_dead_at_failure),
         max_contacts_to_one_payment=max((e.contacts for e in episodes), default=0),
         episodes_at_step_cap=sum(
             1 for e in episodes if len(e.history) >= MAX_STEPS_PER_EPISODE
@@ -375,19 +401,23 @@ class Comparison:
 
         Kept separate from the money on purpose. Every item here is invisible in a
         recovery rate, and each one is a thing a payments team would refuse to ship:
-        messaging people overnight, retrying a card until the issuer kills it,
-        proposing actions the gateway rejects, and failing to terminate.
+        messaging people overnight, proposing actions the gateway rejects, failing
+        to terminate, and reporting two figures that contradict each other.
+
+        Instruments we blocked is deliberately *not* here; it is in `harms`. The
+        distinction is whether zero is attainable. A policy can send no message
+        after 22:00 and propose no impossible action by construction, so any count
+        above zero is a defect. But a failed retry blocks a card with probability
+        0.06 whatever the reason for the failure, so the only policy with zero
+        blocks is one that never retries — and lumping that in here made the column
+        useless, printing "not shippable" against everything that acted at all and
+        putting the strawman and the proposal under the same word.
         """
         m = self.metrics
         problems: list[str] = []
         if m.quiet_hour_contacts:
             problems.append(
                 f"{m.quiet_hour_contacts} messages sent inside quiet hours (22:00–08:00 IST)"
-            )
-        if m.self_inflicted_blocks:
-            problems.append(
-                f"{m.self_inflicted_blocks} instruments blocked by our own retries — "
-                "customers left worse off than if we had done nothing"
             )
         if m.invalid_actions:
             problems.append(
@@ -404,6 +434,26 @@ class Comparison:
                 f"(₹{self.attributed_lift_rupees:,.0f}) — the two measurements disagree"
             )
         return problems
+
+    @property
+    def harms(self) -> list[str]:
+        """Damage the policy did on the way to its lift. Priced, not vetoed.
+
+        This is the cost side of the trade a recovery system actually makes: some
+        customers end up worse off than if nothing had been done. It cannot be
+        driven to zero without giving up retries entirely, so it is underwritten
+        rather than forbidden — against the incumbent's rate, and against the money
+        the retries brought in.
+        """
+        m = self.metrics
+        if not m.self_inflicted_blocks:
+            return []
+        return [
+            f"{m.self_inflicted_blocks} of {m.live_instrument_payments:,} working "
+            f"instruments blocked by our own retries "
+            f"({m.self_inflicted_block_rate:.2%}) — those customers were left worse "
+            "off than if we had done nothing"
+        ]
 
     @property
     def is_shippable(self) -> bool:
