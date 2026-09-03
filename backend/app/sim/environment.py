@@ -682,6 +682,7 @@ class RecoveryEnv:
         blocked: list[str] | None = None,
         decided_at: datetime | None = None,
     ) -> StepResult:
+        at = decided_at if decided_at is not None else ep.now
         result = StepResult(
             t=ep.now,
             action=action,
@@ -693,7 +694,8 @@ class RecoveryEnv:
             detail=detail,
             invalid=invalid,
             compliance_blocked=list(blocked or []),
-            decided_at=decided_at if decided_at is not None else ep.now,
+            decided_at=at,
+            bank_health=self.world.observed_success_rate(ep.bank, at),
         )
         ep.history.append(result)
         return result

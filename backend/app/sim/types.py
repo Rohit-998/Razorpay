@@ -243,6 +243,17 @@ class StepResult:
     a quiet-hours violation, because a link takes a minute to go out — which was a
     real false positive in the metrics before this field existed.
     """
+    bank_health: float = 1.0
+    """The bank's observed success rate over the previous hour, as it stood when the
+    action was taken.
+
+    Recorded because a log that says "this retry failed" without saying what the
+    gateway looked like at the time cannot answer the only question worth asking of
+    it — whether to wait. It is an observable, computed from the merchant's own
+    recent traffic, and it is the same number handed to policies on
+    `Observation.bank_signal`. Fitting on it is what lets a policy tell a payment
+    that is failing from a bank that is down.
+    """
 
     @property
     def taken_at(self) -> datetime:

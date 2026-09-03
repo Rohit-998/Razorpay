@@ -1,0 +1,6147 @@
+{
+ "tallies": {
+  "agent_paid": [
+   1818,
+   5449
+  ],
+  "agent_paid|authentication_failed": [
+   74,
+   188
+  ],
+  "agent_paid|authentication_failed|0": [
+   63,
+   149
+  ],
+  "agent_paid|authentication_failed|1": [
+   3,
+   8
+  ],
+  "agent_paid|authentication_failed|2": [
+   8,
+   31
+  ],
+  "agent_paid|bank_not_enabled": [
+   48,
+   144
+  ],
+  "agent_paid|bank_not_enabled|0": [
+   32,
+   103
+  ],
+  "agent_paid|bank_not_enabled|1": [
+   9,
+   26
+  ],
+  "agent_paid|bank_not_enabled|2": [
+   7,
+   15
+  ],
+  "agent_paid|card_blocked": [
+   28,
+   89
+  ],
+  "agent_paid|card_blocked|0": [
+   21,
+   57
+  ],
+  "agent_paid|card_blocked|1": [
+   2,
+   11
+  ],
+  "agent_paid|card_blocked|2": [
+   5,
+   20
+  ],
+  "agent_paid|card_blocked|3": [
+   0,
+   1
+  ],
+  "agent_paid|gateway_technical_error": [
+   96,
+   318
+  ],
+  "agent_paid|gateway_technical_error|0": [
+   71,
+   233
+  ],
+  "agent_paid|gateway_technical_error|1": [
+   17,
+   47
+  ],
+  "agent_paid|gateway_technical_error|2": [
+   8,
+   37
+  ],
+  "agent_paid|gateway_technical_error|3": [
+   0,
+   1
+  ],
+  "agent_paid|insufficient_funds": [
+   59,
+   521
+  ],
+  "agent_paid|insufficient_funds|0": [
+   33,
+   238
+  ],
+  "agent_paid|insufficient_funds|1": [
+   3,
+   42
+  ],
+  "agent_paid|insufficient_funds|2": [
+   23,
+   238
+  ],
+  "agent_paid|insufficient_funds|3": [
+   0,
+   3
+  ],
+  "agent_paid|invalid_card": [
+   31,
+   109
+  ],
+  "agent_paid|invalid_card|0": [
+   24,
+   81
+  ],
+  "agent_paid|invalid_card|1": [
+   4,
+   11
+  ],
+  "agent_paid|invalid_card|2": [
+   3,
+   17
+  ],
+  "agent_paid|limit_exceeded": [
+   28,
+   198
+  ],
+  "agent_paid|limit_exceeded|0": [
+   17,
+   100
+  ],
+  "agent_paid|limit_exceeded|1": [
+   0,
+   6
+  ],
+  "agent_paid|limit_exceeded|2": [
+   11,
+   92
+  ],
+  "agent_paid|mandate_expired": [
+   15,
+   74
+  ],
+  "agent_paid|mandate_expired|0": [
+   12,
+   54
+  ],
+  "agent_paid|mandate_expired|1": [
+   0,
+   7
+  ],
+  "agent_paid|mandate_expired|2": [
+   3,
+   12
+  ],
+  "agent_paid|mandate_expired|3": [
+   0,
+   1
+  ],
+  "agent_paid|network_error": [
+   75,
+   186
+  ],
+  "agent_paid|network_error|0": [
+   66,
+   149
+  ],
+  "agent_paid|network_error|1": [
+   4,
+   12
+  ],
+  "agent_paid|network_error|2": [
+   5,
+   25
+  ],
+  "agent_paid|other": [
+   262,
+   757
+  ],
+  "agent_paid|other|0": [
+   205,
+   565
+  ],
+  "agent_paid|other|1": [
+   33,
+   111
+  ],
+  "agent_paid|other|2": [
+   24,
+   79
+  ],
+  "agent_paid|other|3": [
+   0,
+   2
+  ],
+  "agent_paid|payment_cancelled": [
+   85,
+   242
+  ],
+  "agent_paid|payment_cancelled|0": [
+   75,
+   195
+  ],
+  "agent_paid|payment_cancelled|1": [
+   6,
+   16
+  ],
+  "agent_paid|payment_cancelled|2": [
+   3,
+   29
+  ],
+  "agent_paid|payment_cancelled|3": [
+   1,
+   2
+  ],
+  "agent_paid|payment_failed": [
+   861,
+   2201
+  ],
+  "agent_paid|payment_failed|0": [
+   665,
+   1628
+  ],
+  "agent_paid|payment_failed|1": [
+   112,
+   315
+  ],
+  "agent_paid|payment_failed|2": [
+   84,
+   257
+  ],
+  "agent_paid|payment_failed|3": [
+   0,
+   1
+  ],
+  "agent_paid|timeout": [
+   109,
+   295
+  ],
+  "agent_paid|timeout|0": [
+   93,
+   209
+  ],
+  "agent_paid|timeout|1": [
+   8,
+   31
+  ],
+  "agent_paid|timeout|2": [
+   7,
+   52
+  ],
+  "agent_paid|timeout|3": [
+   1,
+   3
+  ],
+  "agent_paid|upi_psp_error": [
+   47,
+   127
+  ],
+  "agent_paid|upi_psp_error|0": [
+   31,
+   89
+  ],
+  "agent_paid|upi_psp_error|1": [
+   9,
+   15
+  ],
+  "agent_paid|upi_psp_error|2": [
+   7,
+   21
+  ],
+  "agent_paid|upi_psp_error|3": [
+   0,
+   2
+  ],
+  "link_open": [
+   25812,
+   525193
+  ],
+  "link_open|authentication_failed": [
+   1976,
+   38143
+  ],
+  "link_open|authentication_failed|0": [
+   1583,
+   20380
+  ],
+  "link_open|authentication_failed|0|0": [
+   741,
+   5862
+  ],
+  "link_open|authentication_failed|0|1": [
+   496,
+   5073
+  ],
+  "link_open|authentication_failed|0|2": [
+   346,
+   9445
+  ],
+  "link_open|authentication_failed|1": [
+   215,
+   5124
+  ],
+  "link_open|authentication_failed|1|0": [
+   70,
+   593
+  ],
+  "link_open|authentication_failed|1|1": [
+   76,
+   687
+  ],
+  "link_open|authentication_failed|1|2": [
+   69,
+   3844
+  ],
+  "link_open|authentication_failed|2": [
+   172,
+   11171
+  ],
+  "link_open|authentication_failed|2|0": [
+   51,
+   555
+  ],
+  "link_open|authentication_failed|2|1": [
+   49,
+   693
+  ],
+  "link_open|authentication_failed|2|2": [
+   72,
+   9923
+  ],
+  "link_open|authentication_failed|3": [
+   6,
+   1468
+  ],
+  "link_open|authentication_failed|3|0": [
+   0,
+   1
+  ],
+  "link_open|authentication_failed|3|1": [
+   1,
+   6
+  ],
+  "link_open|authentication_failed|3|2": [
+   5,
+   1461
+  ],
+  "link_open|bank_not_enabled": [
+   790,
+   15746
+  ],
+  "link_open|bank_not_enabled|0": [
+   525,
+   7351
+  ],
+  "link_open|bank_not_enabled|0|0": [
+   284,
+   2241
+  ],
+  "link_open|bank_not_enabled|0|1": [
+   89,
+   1034
+  ],
+  "link_open|bank_not_enabled|0|2": [
+   152,
+   4076
+  ],
+  "link_open|bank_not_enabled|1": [
+   126,
+   2558
+  ],
+  "link_open|bank_not_enabled|1|0": [
+   69,
+   455
+  ],
+  "link_open|bank_not_enabled|1|1": [
+   12,
+   140
+  ],
+  "link_open|bank_not_enabled|1|2": [
+   45,
+   1963
+  ],
+  "link_open|bank_not_enabled|2": [
+   137,
+   5117
+  ],
+  "link_open|bank_not_enabled|2|0": [
+   53,
+   376
+  ],
+  "link_open|bank_not_enabled|2|1": [
+   13,
+   161
+  ],
+  "link_open|bank_not_enabled|2|2": [
+   71,
+   4580
+  ],
+  "link_open|bank_not_enabled|3": [
+   2,
+   720
+  ],
+  "link_open|bank_not_enabled|3|0": [
+   0,
+   1
+  ],
+  "link_open|bank_not_enabled|3|1": [
+   0,
+   2
+  ],
+  "link_open|bank_not_enabled|3|2": [
+   2,
+   717
+  ],
+  "link_open|card_blocked": [
+   940,
+   18781
+  ],
+  "link_open|card_blocked|0": [
+   748,
+   8979
+  ],
+  "link_open|card_blocked|0|0": [
+   465,
+   3284
+  ],
+  "link_open|card_blocked|0|1": [
+   108,
+   1176
+  ],
+  "link_open|card_blocked|0|2": [
+   175,
+   4519
+  ],
+  "link_open|card_blocked|1": [
+   74,
+   2496
+  ],
+  "link_open|card_blocked|1|0": [
+   24,
+   194
+  ],
+  "link_open|card_blocked|1|1": [
+   13,
+   178
+  ],
+  "link_open|card_blocked|1|2": [
+   37,
+   2124
+  ],
+  "link_open|card_blocked|2": [
+   114,
+   6515
+  ],
+  "link_open|card_blocked|2|0": [
+   29,
+   288
+  ],
+  "link_open|card_blocked|2|1": [
+   13,
+   203
+  ],
+  "link_open|card_blocked|2|2": [
+   72,
+   6024
+  ],
+  "link_open|card_blocked|3": [
+   4,
+   791
+  ],
+  "link_open|card_blocked|3|1": [
+   0,
+   3
+  ],
+  "link_open|card_blocked|3|2": [
+   4,
+   788
+  ],
+  "link_open|gateway_technical_error": [
+   1937,
+   41179
+  ],
+  "link_open|gateway_technical_error|0": [
+   1215,
+   19359
+  ],
+  "link_open|gateway_technical_error|0|0": [
+   481,
+   4877
+  ],
+  "link_open|gateway_technical_error|0|1": [
+   366,
+   4022
+  ],
+  "link_open|gateway_technical_error|0|2": [
+   368,
+   10460
+  ],
+  "link_open|gateway_technical_error|1": [
+   464,
+   7683
+  ],
+  "link_open|gateway_technical_error|1|0": [
+   202,
+   1654
+  ],
+  "link_open|gateway_technical_error|1|1": [
+   157,
+   1753
+  ],
+  "link_open|gateway_technical_error|1|2": [
+   105,
+   4276
+  ],
+  "link_open|gateway_technical_error|2": [
+   249,
+   12481
+  ],
+  "link_open|gateway_technical_error|2|0": [
+   66,
+   784
+  ],
+  "link_open|gateway_technical_error|2|1": [
+   70,
+   929
+  ],
+  "link_open|gateway_technical_error|2|2": [
+   113,
+   10768
+  ],
+  "link_open|gateway_technical_error|3": [
+   9,
+   1656
+  ],
+  "link_open|gateway_technical_error|3|1": [
+   0,
+   2
+  ],
+  "link_open|gateway_technical_error|3|2": [
+   9,
+   1654
+  ],
+  "link_open|insufficient_funds": [
+   3724,
+   77905
+  ],
+  "link_open|insufficient_funds|0": [
+   1728,
+   24375
+  ],
+  "link_open|insufficient_funds|0|0": [
+   644,
+   5074
+  ],
+  "link_open|insufficient_funds|0|1": [
+   420,
+   3973
+  ],
+  "link_open|insufficient_funds|0|2": [
+   664,
+   15328
+  ],
+  "link_open|insufficient_funds|1": [
+   304,
+   11017
+  ],
+  "link_open|insufficient_funds|1|0": [
+   39,
+   431
+  ],
+  "link_open|insufficient_funds|1|1": [
+   47,
+   701
+  ],
+  "link_open|insufficient_funds|1|2": [
+   218,
+   9885
+  ],
+  "link_open|insufficient_funds|2": [
+   1671,
+   38677
+  ],
+  "link_open|insufficient_funds|2|0": [
+   755,
+   6627
+  ],
+  "link_open|insufficient_funds|2|1": [
+   631,
+   6959
+  ],
+  "link_open|insufficient_funds|2|2": [
+   285,
+   25091
+  ],
+  "link_open|insufficient_funds|3": [
+   21,
+   3836
+  ],
+  "link_open|insufficient_funds|3|0": [
+   0,
+   1
+  ],
+  "link_open|insufficient_funds|3|1": [
+   0,
+   9
+  ],
+  "link_open|insufficient_funds|3|2": [
+   21,
+   3826
+  ],
+  "link_open|invalid_card": [
+   1082,
+   21786
+  ],
+  "link_open|invalid_card|0": [
+   885,
+   10080
+  ],
+  "link_open|invalid_card|0|0": [
+   577,
+   3722
+  ],
+  "link_open|invalid_card|0|1": [
+   90,
+   1346
+  ],
+  "link_open|invalid_card|0|2": [
+   218,
+   5012
+  ],
+  "link_open|invalid_card|1": [
+   88,
+   3167
+  ],
+  "link_open|invalid_card|1|0": [
+   27,
+   226
+  ],
+  "link_open|invalid_card|1|1": [
+   10,
+   207
+  ],
+  "link_open|invalid_card|1|2": [
+   51,
+   2734
+  ],
+  "link_open|invalid_card|2": [
+   106,
+   7587
+  ],
+  "link_open|invalid_card|2|0": [
+   25,
+   313
+  ],
+  "link_open|invalid_card|2|1": [
+   9,
+   243
+  ],
+  "link_open|invalid_card|2|2": [
+   72,
+   7031
+  ],
+  "link_open|invalid_card|3": [
+   3,
+   952
+  ],
+  "link_open|invalid_card|3|0": [
+   0,
+   1
+  ],
+  "link_open|invalid_card|3|1": [
+   0,
+   3
+  ],
+  "link_open|invalid_card|3|2": [
+   3,
+   948
+  ],
+  "link_open|limit_exceeded": [
+   1466,
+   31317
+  ],
+  "link_open|limit_exceeded|0": [
+   699,
+   9990
+  ],
+  "link_open|limit_exceeded|0|0": [
+   275,
+   2089
+  ],
+  "link_open|limit_exceeded|0|1": [
+   162,
+   1603
+  ],
+  "link_open|limit_exceeded|0|2": [
+   262,
+   6298
+  ],
+  "link_open|limit_exceeded|1": [
+   109,
+   3884
+  ],
+  "link_open|limit_exceeded|1|0": [
+   12,
+   185
+  ],
+  "link_open|limit_exceeded|1|1": [
+   21,
+   286
+  ],
+  "link_open|limit_exceeded|1|2": [
+   76,
+   3413
+  ],
+  "link_open|limit_exceeded|2": [
+   646,
+   15845
+  ],
+  "link_open|limit_exceeded|2|0": [
+   292,
+   2745
+  ],
+  "link_open|limit_exceeded|2|1": [
+   227,
+   2892
+  ],
+  "link_open|limit_exceeded|2|2": [
+   127,
+   10208
+  ],
+  "link_open|limit_exceeded|3": [
+   12,
+   1598
+  ],
+  "link_open|limit_exceeded|3|0": [
+   0,
+   2
+  ],
+  "link_open|limit_exceeded|3|1": [
+   0,
+   4
+  ],
+  "link_open|limit_exceeded|3|2": [
+   12,
+   1592
+  ],
+  "link_open|mandate_expired": [
+   764,
+   14212
+  ],
+  "link_open|mandate_expired|0": [
+   615,
+   6278
+  ],
+  "link_open|mandate_expired|0|0": [
+   385,
+   2298
+  ],
+  "link_open|mandate_expired|0|1": [
+   73,
+   849
+  ],
+  "link_open|mandate_expired|0|2": [
+   157,
+   3131
+  ],
+  "link_open|mandate_expired|1": [
+   63,
+   2010
+  ],
+  "link_open|mandate_expired|1|0": [
+   17,
+   187
+  ],
+  "link_open|mandate_expired|1|1": [
+   9,
+   122
+  ],
+  "link_open|mandate_expired|1|2": [
+   37,
+   1701
+  ],
+  "link_open|mandate_expired|2": [
+   85,
+   5142
+  ],
+  "link_open|mandate_expired|2|0": [
+   27,
+   243
+  ],
+  "link_open|mandate_expired|2|1": [
+   7,
+   162
+  ],
+  "link_open|mandate_expired|2|2": [
+   51,
+   4737
+  ],
+  "link_open|mandate_expired|3": [
+   1,
+   782
+  ],
+  "link_open|mandate_expired|3|0": [
+   0,
+   1
+  ],
+  "link_open|mandate_expired|3|1": [
+   0,
+   2
+  ],
+  "link_open|mandate_expired|3|2": [
+   1,
+   779
+  ],
+  "link_open|network_error": [
+   1204,
+   25508
+  ],
+  "link_open|network_error|0": [
+   840,
+   12302
+  ],
+  "link_open|network_error|0|0": [
+   370,
+   3328
+  ],
+  "link_open|network_error|0|1": [
+   234,
+   2708
+  ],
+  "link_open|network_error|0|2": [
+   236,
+   6266
+  ],
+  "link_open|network_error|1": [
+   214,
+   4361
+  ],
+  "link_open|network_error|1|0": [
+   104,
+   791
+  ],
+  "link_open|network_error|1|1": [
+   64,
+   867
+  ],
+  "link_open|network_error|1|2": [
+   46,
+   2703
+  ],
+  "link_open|network_error|2": [
+   148,
+   7863
+  ],
+  "link_open|network_error|2|0": [
+   44,
+   415
+  ],
+  "link_open|network_error|2|1": [
+   50,
+   504
+  ],
+  "link_open|network_error|2|2": [
+   54,
+   6944
+  ],
+  "link_open|network_error|3": [
+   2,
+   982
+  ],
+  "link_open|network_error|3|2": [
+   2,
+   982
+  ],
+  "link_open|other": [
+   1658,
+   34952
+  ],
+  "link_open|other|0": [
+   1254,
+   15326
+  ],
+  "link_open|other|0|0": [
+   746,
+   5376
+  ],
+  "link_open|other|0|1": [
+   189,
+   2101
+  ],
+  "link_open|other|0|2": [
+   319,
+   7849
+  ],
+  "link_open|other|1": [
+   157,
+   5062
+  ],
+  "link_open|other|1|0": [
+   63,
+   611
+  ],
+  "link_open|other|1|1": [
+   12,
+   325
+  ],
+  "link_open|other|1|2": [
+   82,
+   4126
+  ],
+  "link_open|other|2": [
+   242,
+   12826
+  ],
+  "link_open|other|2|0": [
+   57,
+   606
+  ],
+  "link_open|other|2|1": [
+   31,
+   431
+  ],
+  "link_open|other|2|2": [
+   154,
+   11789
+  ],
+  "link_open|other|3": [
+   5,
+   1738
+  ],
+  "link_open|other|3|1": [
+   0,
+   8
+  ],
+  "link_open|other|3|2": [
+   5,
+   1730
+  ],
+  "link_open|payment_cancelled": [
+   2265,
+   42679
+  ],
+  "link_open|payment_cancelled|0": [
+   1855,
+   22098
+  ],
+  "link_open|payment_cancelled|0|0": [
+   900,
+   6383
+  ],
+  "link_open|payment_cancelled|0|1": [
+   536,
+   5510
+  ],
+  "link_open|payment_cancelled|0|2": [
+   419,
+   10205
+  ],
+  "link_open|payment_cancelled|1": [
+   189,
+   5610
+  ],
+  "link_open|payment_cancelled|1|0": [
+   77,
+   625
+  ],
+  "link_open|payment_cancelled|1|1": [
+   54,
+   721
+  ],
+  "link_open|payment_cancelled|1|2": [
+   58,
+   4264
+  ],
+  "link_open|payment_cancelled|2": [
+   212,
+   13178
+  ],
+  "link_open|payment_cancelled|2|0": [
+   62,
+   651
+  ],
+  "link_open|payment_cancelled|2|1": [
+   65,
+   822
+  ],
+  "link_open|payment_cancelled|2|2": [
+   85,
+   11705
+  ],
+  "link_open|payment_cancelled|3": [
+   9,
+   1793
+  ],
+  "link_open|payment_cancelled|3|0": [
+   0,
+   1
+  ],
+  "link_open|payment_cancelled|3|1": [
+   0,
+   3
+  ],
+  "link_open|payment_cancelled|3|2": [
+   9,
+   1789
+  ],
+  "link_open|payment_failed": [
+   4757,
+   97618
+  ],
+  "link_open|payment_failed|0": [
+   3629,
+   45792
+  ],
+  "link_open|payment_failed|0|0": [
+   2199,
+   15849
+  ],
+  "link_open|payment_failed|0|1": [
+   544,
+   6347
+  ],
+  "link_open|payment_failed|0|2": [
+   886,
+   23596
+  ],
+  "link_open|payment_failed|1": [
+   543,
+   14196
+  ],
+  "link_open|payment_failed|1|0": [
+   271,
+   1877
+  ],
+  "link_open|payment_failed|1|1": [
+   73,
+   918
+  ],
+  "link_open|payment_failed|1|2": [
+   199,
+   11401
+  ],
+  "link_open|payment_failed|2": [
+   569,
+   33155
+  ],
+  "link_open|payment_failed|2|0": [
+   170,
+   1617
+  ],
+  "link_open|payment_failed|2|1": [
+   58,
+   1000
+  ],
+  "link_open|payment_failed|2|2": [
+   341,
+   30538
+  ],
+  "link_open|payment_failed|3": [
+   16,
+   4475
+  ],
+  "link_open|payment_failed|3|0": [
+   0,
+   3
+  ],
+  "link_open|payment_failed|3|1": [
+   0,
+   11
+  ],
+  "link_open|payment_failed|3|2": [
+   16,
+   4461
+  ],
+  "link_open|timeout": [
+   2399,
+   49132
+  ],
+  "link_open|timeout|0": [
+   1812,
+   25267
+  ],
+  "link_open|timeout|0|0": [
+   814,
+   6866
+  ],
+  "link_open|timeout|0|1": [
+   510,
+   5669
+  ],
+  "link_open|timeout|0|2": [
+   488,
+   12732
+  ],
+  "link_open|timeout|1": [
+   360,
+   7521
+  ],
+  "link_open|timeout|1|0": [
+   146,
+   1301
+  ],
+  "link_open|timeout|1|1": [
+   132,
+   1416
+  ],
+  "link_open|timeout|1|2": [
+   82,
+   4804
+  ],
+  "link_open|timeout|2": [
+   223,
+   14328
+  ],
+  "link_open|timeout|2|0": [
+   53,
+   794
+  ],
+  "link_open|timeout|2|1": [
+   65,
+   947
+  ],
+  "link_open|timeout|2|2": [
+   105,
+   12587
+  ],
+  "link_open|timeout|3": [
+   4,
+   2016
+  ],
+  "link_open|timeout|3|1": [
+   0,
+   2
+  ],
+  "link_open|timeout|3|2": [
+   4,
+   2014
+  ],
+  "link_open|upi_psp_error": [
+   850,
+   16235
+  ],
+  "link_open|upi_psp_error|0": [
+   555,
+   7633
+  ],
+  "link_open|upi_psp_error|0|0": [
+   235,
+   1964
+  ],
+  "link_open|upi_psp_error|0|1": [
+   153,
+   1597
+  ],
+  "link_open|upi_psp_error|0|2": [
+   167,
+   4072
+  ],
+  "link_open|upi_psp_error|1": [
+   186,
+   2896
+  ],
+  "link_open|upi_psp_error|1|0": [
+   91,
+   690
+  ],
+  "link_open|upi_psp_error|1|1": [
+   69,
+   733
+  ],
+  "link_open|upi_psp_error|1|2": [
+   26,
+   1473
+  ],
+  "link_open|upi_psp_error|2": [
+   107,
+   5050
+  ],
+  "link_open|upi_psp_error|2|0": [
+   36,
+   308
+  ],
+  "link_open|upi_psp_error|2|1": [
+   26,
+   379
+  ],
+  "link_open|upi_psp_error|2|2": [
+   45,
+   4363
+  ],
+  "link_open|upi_psp_error|3": [
+   2,
+   656
+  ],
+  "link_open|upi_psp_error|3|2": [
+   2,
+   656
+  ],
+  "retry_same": [
+   6333,
+   22904
+  ],
+  "retry_same|authentication_failed": [
+   619,
+   1172
+  ],
+  "retry_same|authentication_failed|0": [
+   529,
+   889
+  ],
+  "retry_same|authentication_failed|0|0": [
+   490,
+   635
+  ],
+  "retry_same|authentication_failed|0|1": [
+   36,
+   97
+  ],
+  "retry_same|authentication_failed|0|2": [
+   3,
+   157
+  ],
+  "retry_same|authentication_failed|1": [
+   53,
+   126
+  ],
+  "retry_same|authentication_failed|1|0": [
+   50,
+   59
+  ],
+  "retry_same|authentication_failed|1|1": [
+   1,
+   10
+  ],
+  "retry_same|authentication_failed|1|2": [
+   2,
+   57
+  ],
+  "retry_same|authentication_failed|2": [
+   36,
+   137
+  ],
+  "retry_same|authentication_failed|2|0": [
+   18,
+   26
+  ],
+  "retry_same|authentication_failed|2|1": [
+   4,
+   12
+  ],
+  "retry_same|authentication_failed|2|2": [
+   14,
+   99
+  ],
+  "retry_same|authentication_failed|3": [
+   1,
+   20
+  ],
+  "retry_same|authentication_failed|3|2": [
+   1,
+   20
+  ],
+  "retry_same|bank_not_enabled": [
+   37,
+   222
+  ],
+  "retry_same|bank_not_enabled|0": [
+   22,
+   169
+  ],
+  "retry_same|bank_not_enabled|0|0": [
+   10,
+   86
+  ],
+  "retry_same|bank_not_enabled|0|1": [
+   6,
+   40
+  ],
+  "retry_same|bank_not_enabled|0|2": [
+   6,
+   43
+  ],
+  "retry_same|bank_not_enabled|1": [
+   5,
+   24
+  ],
+  "retry_same|bank_not_enabled|1|0": [
+   4,
+   13
+  ],
+  "retry_same|bank_not_enabled|1|1": [
+   1,
+   3
+  ],
+  "retry_same|bank_not_enabled|1|2": [
+   0,
+   8
+  ],
+  "retry_same|bank_not_enabled|2": [
+   10,
+   29
+  ],
+  "retry_same|bank_not_enabled|2|0": [
+   3,
+   6
+  ],
+  "retry_same|bank_not_enabled|2|1": [
+   4,
+   8
+  ],
+  "retry_same|bank_not_enabled|2|2": [
+   3,
+   15
+  ],
+  "retry_same|card_blocked": [
+   4,
+   582
+  ],
+  "retry_same|card_blocked|0": [
+   1,
+   322
+  ],
+  "retry_same|card_blocked|0|0": [
+   0,
+   161
+  ],
+  "retry_same|card_blocked|0|1": [
+   1,
+   78
+  ],
+  "retry_same|card_blocked|0|2": [
+   0,
+   83
+  ],
+  "retry_same|card_blocked|1": [
+   1,
+   80
+  ],
+  "retry_same|card_blocked|1|0": [
+   0,
+   22
+  ],
+  "retry_same|card_blocked|1|1": [
+   0,
+   16
+  ],
+  "retry_same|card_blocked|1|2": [
+   1,
+   42
+  ],
+  "retry_same|card_blocked|2": [
+   2,
+   150
+  ],
+  "retry_same|card_blocked|2|0": [
+   1,
+   15
+  ],
+  "retry_same|card_blocked|2|1": [
+   0,
+   14
+  ],
+  "retry_same|card_blocked|2|2": [
+   1,
+   121
+  ],
+  "retry_same|card_blocked|3": [
+   0,
+   30
+  ],
+  "retry_same|card_blocked|3|0": [
+   0,
+   1
+  ],
+  "retry_same|card_blocked|3|1": [
+   0,
+   2
+  ],
+  "retry_same|card_blocked|3|2": [
+   0,
+   27
+  ],
+  "retry_same|gateway_technical_error": [
+   821,
+   1437
+  ],
+  "retry_same|gateway_technical_error|0": [
+   429,
+   955
+  ],
+  "retry_same|gateway_technical_error|0|0": [
+   367,
+   632
+  ],
+  "retry_same|gateway_technical_error|0|1": [
+   45,
+   223
+  ],
+  "retry_same|gateway_technical_error|0|2": [
+   17,
+   100
+  ],
+  "retry_same|gateway_technical_error|1": [
+   341,
+   403
+  ],
+  "retry_same|gateway_technical_error|1|0": [
+   311,
+   346
+  ],
+  "retry_same|gateway_technical_error|1|1": [
+   23,
+   44
+  ],
+  "retry_same|gateway_technical_error|1|2": [
+   7,
+   13
+  ],
+  "retry_same|gateway_technical_error|2": [
+   50,
+   78
+  ],
+  "retry_same|gateway_technical_error|2|0": [
+   24,
+   27
+  ],
+  "retry_same|gateway_technical_error|2|1": [
+   10,
+   17
+  ],
+  "retry_same|gateway_technical_error|2|2": [
+   16,
+   34
+  ],
+  "retry_same|gateway_technical_error|3": [
+   1,
+   1
+  ],
+  "retry_same|gateway_technical_error|3|0": [
+   1,
+   1
+  ],
+  "retry_same|insufficient_funds": [
+   100,
+   5149
+  ],
+  "retry_same|insufficient_funds|0": [
+   0,
+   1158
+  ],
+  "retry_same|insufficient_funds|0|0": [
+   0,
+   398
+  ],
+  "retry_same|insufficient_funds|0|1": [
+   0,
+   242
+  ],
+  "retry_same|insufficient_funds|0|2": [
+   0,
+   518
+  ],
+  "retry_same|insufficient_funds|1": [
+   2,
+   513
+  ],
+  "retry_same|insufficient_funds|1|0": [
+   0,
+   49
+  ],
+  "retry_same|insufficient_funds|1|1": [
+   0,
+   67
+  ],
+  "retry_same|insufficient_funds|1|2": [
+   2,
+   397
+  ],
+  "retry_same|insufficient_funds|2": [
+   97,
+   3336
+  ],
+  "retry_same|insufficient_funds|2|0": [
+   75,
+   1187
+  ],
+  "retry_same|insufficient_funds|2|1": [
+   5,
+   1159
+  ],
+  "retry_same|insufficient_funds|2|2": [
+   17,
+   990
+  ],
+  "retry_same|insufficient_funds|3": [
+   1,
+   142
+  ],
+  "retry_same|insufficient_funds|3|0": [
+   0,
+   1
+  ],
+  "retry_same|insufficient_funds|3|1": [
+   0,
+   2
+  ],
+  "retry_same|insufficient_funds|3|2": [
+   1,
+   139
+  ],
+  "retry_same|invalid_card": [
+   9,
+   556
+  ],
+  "retry_same|invalid_card|0": [
+   0,
+   329
+  ],
+  "retry_same|invalid_card|0|0": [
+   0,
+   156
+  ],
+  "retry_same|invalid_card|0|1": [
+   0,
+   70
+  ],
+  "retry_same|invalid_card|0|2": [
+   0,
+   103
+  ],
+  "retry_same|invalid_card|1": [
+   3,
+   71
+  ],
+  "retry_same|invalid_card|1|0": [
+   1,
+   18
+  ],
+  "retry_same|invalid_card|1|1": [
+   0,
+   14
+  ],
+  "retry_same|invalid_card|1|2": [
+   2,
+   39
+  ],
+  "retry_same|invalid_card|2": [
+   5,
+   130
+  ],
+  "retry_same|invalid_card|2|0": [
+   1,
+   19
+  ],
+  "retry_same|invalid_card|2|1": [
+   0,
+   20
+  ],
+  "retry_same|invalid_card|2|2": [
+   4,
+   91
+  ],
+  "retry_same|invalid_card|3": [
+   1,
+   26
+  ],
+  "retry_same|invalid_card|3|0": [
+   0,
+   1
+  ],
+  "retry_same|invalid_card|3|1": [
+   0,
+   1
+  ],
+  "retry_same|invalid_card|3|2": [
+   1,
+   24
+  ],
+  "retry_same|limit_exceeded": [
+   33,
+   2007
+  ],
+  "retry_same|limit_exceeded|0": [
+   0,
+   455
+  ],
+  "retry_same|limit_exceeded|0|0": [
+   0,
+   182
+  ],
+  "retry_same|limit_exceeded|0|1": [
+   0,
+   90
+  ],
+  "retry_same|limit_exceeded|0|2": [
+   0,
+   183
+  ],
+  "retry_same|limit_exceeded|1": [
+   0,
+   150
+  ],
+  "retry_same|limit_exceeded|1|0": [
+   0,
+   18
+  ],
+  "retry_same|limit_exceeded|1|1": [
+   0,
+   18
+  ],
+  "retry_same|limit_exceeded|1|2": [
+   0,
+   114
+  ],
+  "retry_same|limit_exceeded|2": [
+   32,
+   1365
+  ],
+  "retry_same|limit_exceeded|2|0": [
+   27,
+   533
+  ],
+  "retry_same|limit_exceeded|2|1": [
+   3,
+   518
+  ],
+  "retry_same|limit_exceeded|2|2": [
+   2,
+   314
+  ],
+  "retry_same|limit_exceeded|3": [
+   1,
+   37
+  ],
+  "retry_same|limit_exceeded|3|1": [
+   0,
+   1
+  ],
+  "retry_same|limit_exceeded|3|2": [
+   1,
+   36
+  ],
+  "retry_same|mandate_expired": [
+   2,
+   363
+  ],
+  "retry_same|mandate_expired|0": [
+   0,
+   209
+  ],
+  "retry_same|mandate_expired|0|0": [
+   0,
+   119
+  ],
+  "retry_same|mandate_expired|0|1": [
+   0,
+   46
+  ],
+  "retry_same|mandate_expired|0|2": [
+   0,
+   44
+  ],
+  "retry_same|mandate_expired|1": [
+   0,
+   26
+  ],
+  "retry_same|mandate_expired|1|0": [
+   0,
+   11
+  ],
+  "retry_same|mandate_expired|1|1": [
+   0,
+   6
+  ],
+  "retry_same|mandate_expired|1|2": [
+   0,
+   9
+  ],
+  "retry_same|mandate_expired|2": [
+   2,
+   118
+  ],
+  "retry_same|mandate_expired|2|0": [
+   0,
+   18
+  ],
+  "retry_same|mandate_expired|2|1": [
+   0,
+   19
+  ],
+  "retry_same|mandate_expired|2|2": [
+   2,
+   81
+  ],
+  "retry_same|mandate_expired|3": [
+   0,
+   10
+  ],
+  "retry_same|mandate_expired|3|1": [
+   0,
+   1
+  ],
+  "retry_same|mandate_expired|3|2": [
+   0,
+   9
+  ],
+  "retry_same|network_error": [
+   619,
+   859
+  ],
+  "retry_same|network_error|0": [
+   433,
+   637
+  ],
+  "retry_same|network_error|0|0": [
+   394,
+   500
+  ],
+  "retry_same|network_error|0|1": [
+   28,
+   84
+  ],
+  "retry_same|network_error|0|2": [
+   11,
+   53
+  ],
+  "retry_same|network_error|1": [
+   165,
+   200
+  ],
+  "retry_same|network_error|1|0": [
+   145,
+   167
+  ],
+  "retry_same|network_error|1|1": [
+   14,
+   23
+  ],
+  "retry_same|network_error|1|2": [
+   6,
+   10
+  ],
+  "retry_same|network_error|2": [
+   21,
+   22
+  ],
+  "retry_same|network_error|2|0": [
+   13,
+   13
+  ],
+  "retry_same|network_error|2|1": [
+   5,
+   6
+  ],
+  "retry_same|network_error|2|2": [
+   3,
+   3
+  ],
+  "retry_same|other": [
+   311,
+   1589
+  ],
+  "retry_same|other|0": [
+   264,
+   1035
+  ],
+  "retry_same|other|0|0": [
+   260,
+   844
+  ],
+  "retry_same|other|0|1": [
+   4,
+   65
+  ],
+  "retry_same|other|0|2": [
+   0,
+   126
+  ],
+  "retry_same|other|1": [
+   18,
+   188
+  ],
+  "retry_same|other|1|0": [
+   16,
+   67
+  ],
+  "retry_same|other|1|1": [
+   1,
+   25
+  ],
+  "retry_same|other|1|2": [
+   1,
+   96
+  ],
+  "retry_same|other|2": [
+   28,
+   314
+  ],
+  "retry_same|other|2|0": [
+   12,
+   38
+  ],
+  "retry_same|other|2|1": [
+   3,
+   25
+  ],
+  "retry_same|other|2|2": [
+   13,
+   251
+  ],
+  "retry_same|other|3": [
+   1,
+   52
+  ],
+  "retry_same|other|3|1": [
+   0,
+   1
+  ],
+  "retry_same|other|3|2": [
+   1,
+   51
+  ],
+  "retry_same|payment_cancelled": [
+   770,
+   1668
+  ],
+  "retry_same|payment_cancelled|0": [
+   653,
+   1114
+  ],
+  "retry_same|payment_cancelled|0|0": [
+   634,
+   810
+  ],
+  "retry_same|payment_cancelled|0|1": [
+   17,
+   158
+  ],
+  "retry_same|payment_cancelled|0|2": [
+   2,
+   146
+  ],
+  "retry_same|payment_cancelled|1": [
+   69,
+   211
+  ],
+  "retry_same|payment_cancelled|1|0": [
+   64,
+   82
+  ],
+  "retry_same|payment_cancelled|1|1": [
+   2,
+   32
+  ],
+  "retry_same|payment_cancelled|1|2": [
+   3,
+   97
+  ],
+  "retry_same|payment_cancelled|2": [
+   48,
+   301
+  ],
+  "retry_same|payment_cancelled|2|0": [
+   36,
+   49
+  ],
+  "retry_same|payment_cancelled|2|1": [
+   3,
+   26
+  ],
+  "retry_same|payment_cancelled|2|2": [
+   9,
+   226
+  ],
+  "retry_same|payment_cancelled|3": [
+   0,
+   42
+  ],
+  "retry_same|payment_cancelled|3|2": [
+   0,
+   42
+  ],
+  "retry_same|payment_failed": [
+   1154,
+   4795
+  ],
+  "retry_same|payment_failed|0": [
+   876,
+   3381
+  ],
+  "retry_same|payment_failed|0|0": [
+   846,
+   2699
+  ],
+  "retry_same|payment_failed|0|1": [
+   21,
+   281
+  ],
+  "retry_same|payment_failed|0|2": [
+   9,
+   401
+  ],
+  "retry_same|payment_failed|1": [
+   200,
+   616
+  ],
+  "retry_same|payment_failed|1|0": [
+   183,
+   304
+  ],
+  "retry_same|payment_failed|1|1": [
+   6,
+   53
+  ],
+  "retry_same|payment_failed|1|2": [
+   11,
+   259
+  ],
+  "retry_same|payment_failed|2": [
+   76,
+   711
+  ],
+  "retry_same|payment_failed|2|0": [
+   37,
+   87
+  ],
+  "retry_same|payment_failed|2|1": [
+   18,
+   74
+  ],
+  "retry_same|payment_failed|2|2": [
+   21,
+   550
+  ],
+  "retry_same|payment_failed|3": [
+   2,
+   87
+  ],
+  "retry_same|payment_failed|3|1": [
+   0,
+   3
+  ],
+  "retry_same|payment_failed|3|2": [
+   2,
+   84
+  ],
+  "retry_same|timeout": [
+   1401,
+   1801
+  ],
+  "retry_same|timeout|0": [
+   996,
+   1344
+  ],
+  "retry_same|timeout|0|0": [
+   918,
+   1118
+  ],
+  "retry_same|timeout|0|1": [
+   65,
+   153
+  ],
+  "retry_same|timeout|0|2": [
+   13,
+   73
+  ],
+  "retry_same|timeout|1": [
+   355,
+   400
+  ],
+  "retry_same|timeout|1|0": [
+   316,
+   348
+  ],
+  "retry_same|timeout|1|1": [
+   33,
+   44
+  ],
+  "retry_same|timeout|1|2": [
+   6,
+   8
+  ],
+  "retry_same|timeout|2": [
+   50,
+   57
+  ],
+  "retry_same|timeout|2|0": [
+   38,
+   41
+  ],
+  "retry_same|timeout|2|1": [
+   7,
+   7
+  ],
+  "retry_same|timeout|2|2": [
+   5,
+   9
+  ],
+  "retry_same|upi_psp_error": [
+   453,
+   704
+  ],
+  "retry_same|upi_psp_error|0": [
+   226,
+   443
+  ],
+  "retry_same|upi_psp_error|0|0": [
+   179,
+   303
+  ],
+  "retry_same|upi_psp_error|0|1": [
+   32,
+   88
+  ],
+  "retry_same|upi_psp_error|0|2": [
+   15,
+   52
+  ],
+  "retry_same|upi_psp_error|1": [
+   210,
+   242
+  ],
+  "retry_same|upi_psp_error|1|0": [
+   184,
+   205
+  ],
+  "retry_same|upi_psp_error|1|1": [
+   24,
+   32
+  ],
+  "retry_same|upi_psp_error|1|2": [
+   2,
+   5
+  ],
+  "retry_same|upi_psp_error|2": [
+   17,
+   19
+  ],
+  "retry_same|upi_psp_error|2|0": [
+   9,
+   9
+  ],
+  "retry_same|upi_psp_error|2|1": [
+   5,
+   5
+  ],
+  "retry_same|upi_psp_error|2|2": [
+   3,
+   5
+  ],
+  "retry_switched": [
+   5239,
+   14086
+  ],
+  "retry_switched|authentication_failed": [
+   334,
+   928
+  ],
+  "retry_switched|authentication_failed|0": [
+   259,
+   638
+  ],
+  "retry_switched|authentication_failed|0|0": [
+   240,
+   357
+  ],
+  "retry_switched|authentication_failed|0|1": [
+   15,
+   99
+  ],
+  "retry_switched|authentication_failed|0|2": [
+   4,
+   182
+  ],
+  "retry_switched|authentication_failed|1": [
+   27,
+   92
+  ],
+  "retry_switched|authentication_failed|1|0": [
+   19,
+   27
+  ],
+  "retry_switched|authentication_failed|1|1": [
+   3,
+   15
+  ],
+  "retry_switched|authentication_failed|1|2": [
+   5,
+   50
+  ],
+  "retry_switched|authentication_failed|2": [
+   47,
+   181
+  ],
+  "retry_switched|authentication_failed|2|0": [
+   29,
+   36
+  ],
+  "retry_switched|authentication_failed|2|1": [
+   8,
+   21
+  ],
+  "retry_switched|authentication_failed|2|2": [
+   10,
+   124
+  ],
+  "retry_switched|authentication_failed|3": [
+   1,
+   17
+  ],
+  "retry_switched|authentication_failed|3|1": [
+   1,
+   1
+  ],
+  "retry_switched|authentication_failed|3|2": [
+   0,
+   16
+  ],
+  "retry_switched|bank_not_enabled": [
+   206,
+   284
+  ],
+  "retry_switched|bank_not_enabled|0": [
+   152,
+   222
+  ],
+  "retry_switched|bank_not_enabled|0|0": [
+   109,
+   143
+  ],
+  "retry_switched|bank_not_enabled|0|1": [
+   30,
+   43
+  ],
+  "retry_switched|bank_not_enabled|0|2": [
+   13,
+   36
+  ],
+  "retry_switched|bank_not_enabled|1": [
+   19,
+   25
+  ],
+  "retry_switched|bank_not_enabled|1|0": [
+   9,
+   9
+  ],
+  "retry_switched|bank_not_enabled|1|1": [
+   7,
+   7
+  ],
+  "retry_switched|bank_not_enabled|1|2": [
+   3,
+   9
+  ],
+  "retry_switched|bank_not_enabled|2": [
+   35,
+   37
+  ],
+  "retry_switched|bank_not_enabled|2|0": [
+   16,
+   17
+  ],
+  "retry_switched|bank_not_enabled|2|1": [
+   7,
+   8
+  ],
+  "retry_switched|bank_not_enabled|2|2": [
+   12,
+   12
+  ],
+  "retry_switched|card_blocked": [
+   365,
+   501
+  ],
+  "retry_switched|card_blocked|0": [
+   257,
+   335
+  ],
+  "retry_switched|card_blocked|0|0": [
+   182,
+   219
+  ],
+  "retry_switched|card_blocked|0|1": [
+   49,
+   65
+  ],
+  "retry_switched|card_blocked|0|2": [
+   26,
+   51
+  ],
+  "retry_switched|card_blocked|1": [
+   48,
+   74
+  ],
+  "retry_switched|card_blocked|1|0": [
+   23,
+   29
+  ],
+  "retry_switched|card_blocked|1|1": [
+   15,
+   19
+  ],
+  "retry_switched|card_blocked|1|2": [
+   10,
+   26
+  ],
+  "retry_switched|card_blocked|2": [
+   59,
+   91
+  ],
+  "retry_switched|card_blocked|2|0": [
+   24,
+   24
+  ],
+  "retry_switched|card_blocked|2|1": [
+   18,
+   22
+  ],
+  "retry_switched|card_blocked|2|2": [
+   17,
+   45
+  ],
+  "retry_switched|card_blocked|3": [
+   1,
+   1
+  ],
+  "retry_switched|card_blocked|3|2": [
+   1,
+   1
+  ],
+  "retry_switched|gateway_technical_error": [
+   390,
+   779
+  ],
+  "retry_switched|gateway_technical_error|0": [
+   243,
+   602
+  ],
+  "retry_switched|gateway_technical_error|0|0": [
+   182,
+   355
+  ],
+  "retry_switched|gateway_technical_error|0|1": [
+   40,
+   112
+  ],
+  "retry_switched|gateway_technical_error|0|2": [
+   21,
+   135
+  ],
+  "retry_switched|gateway_technical_error|1": [
+   67,
+   81
+  ],
+  "retry_switched|gateway_technical_error|1|0": [
+   35,
+   36
+  ],
+  "retry_switched|gateway_technical_error|1|1": [
+   15,
+   18
+  ],
+  "retry_switched|gateway_technical_error|1|2": [
+   17,
+   27
+  ],
+  "retry_switched|gateway_technical_error|2": [
+   78,
+   94
+  ],
+  "retry_switched|gateway_technical_error|2|0": [
+   46,
+   51
+  ],
+  "retry_switched|gateway_technical_error|2|1": [
+   11,
+   14
+  ],
+  "retry_switched|gateway_technical_error|2|2": [
+   21,
+   29
+  ],
+  "retry_switched|gateway_technical_error|3": [
+   2,
+   2
+  ],
+  "retry_switched|gateway_technical_error|3|1": [
+   1,
+   1
+  ],
+  "retry_switched|gateway_technical_error|3|2": [
+   1,
+   1
+  ],
+  "retry_switched|insufficient_funds": [
+   315,
+   2947
+  ],
+  "retry_switched|insufficient_funds|0": [
+   190,
+   1235
+  ],
+  "retry_switched|insufficient_funds|0|0": [
+   108,
+   433
+  ],
+  "retry_switched|insufficient_funds|0|1": [
+   49,
+   272
+  ],
+  "retry_switched|insufficient_funds|0|2": [
+   33,
+   530
+  ],
+  "retry_switched|insufficient_funds|1": [
+   43,
+   506
+  ],
+  "retry_switched|insufficient_funds|1|0": [
+   17,
+   59
+  ],
+  "retry_switched|insufficient_funds|1|1": [
+   11,
+   61
+  ],
+  "retry_switched|insufficient_funds|1|2": [
+   15,
+   386
+  ],
+  "retry_switched|insufficient_funds|2": [
+   77,
+   1087
+  ],
+  "retry_switched|insufficient_funds|2|0": [
+   16,
+   65
+  ],
+  "retry_switched|insufficient_funds|2|1": [
+   13,
+   84
+  ],
+  "retry_switched|insufficient_funds|2|2": [
+   48,
+   938
+  ],
+  "retry_switched|insufficient_funds|3": [
+   5,
+   119
+  ],
+  "retry_switched|insufficient_funds|3|1": [
+   1,
+   2
+  ],
+  "retry_switched|insufficient_funds|3|2": [
+   4,
+   117
+  ],
+  "retry_switched|invalid_card": [
+   324,
+   720
+  ],
+  "retry_switched|invalid_card|0": [
+   225,
+   452
+  ],
+  "retry_switched|invalid_card|0|0": [
+   154,
+   225
+  ],
+  "retry_switched|invalid_card|0|1": [
+   46,
+   91
+  ],
+  "retry_switched|invalid_card|0|2": [
+   25,
+   136
+  ],
+  "retry_switched|invalid_card|1": [
+   37,
+   99
+  ],
+  "retry_switched|invalid_card|1|0": [
+   16,
+   24
+  ],
+  "retry_switched|invalid_card|1|1": [
+   15,
+   22
+  ],
+  "retry_switched|invalid_card|1|2": [
+   6,
+   53
+  ],
+  "retry_switched|invalid_card|2": [
+   56,
+   159
+  ],
+  "retry_switched|invalid_card|2|0": [
+   22,
+   30
+  ],
+  "retry_switched|invalid_card|2|1": [
+   14,
+   18
+  ],
+  "retry_switched|invalid_card|2|2": [
+   20,
+   111
+  ],
+  "retry_switched|invalid_card|3": [
+   6,
+   10
+  ],
+  "retry_switched|invalid_card|3|0": [
+   1,
+   1
+  ],
+  "retry_switched|invalid_card|3|1": [
+   1,
+   1
+  ],
+  "retry_switched|invalid_card|3|2": [
+   4,
+   8
+  ],
+  "retry_switched|limit_exceeded": [
+   255,
+   982
+  ],
+  "retry_switched|limit_exceeded|0": [
+   178,
+   489
+  ],
+  "retry_switched|limit_exceeded|0|0": [
+   115,
+   209
+  ],
+  "retry_switched|limit_exceeded|0|1": [
+   39,
+   112
+  ],
+  "retry_switched|limit_exceeded|0|2": [
+   24,
+   168
+  ],
+  "retry_switched|limit_exceeded|1": [
+   25,
+   115
+  ],
+  "retry_switched|limit_exceeded|1|0": [
+   12,
+   16
+  ],
+  "retry_switched|limit_exceeded|1|1": [
+   5,
+   18
+  ],
+  "retry_switched|limit_exceeded|1|2": [
+   8,
+   81
+  ],
+  "retry_switched|limit_exceeded|2": [
+   47,
+   340
+  ],
+  "retry_switched|limit_exceeded|2|0": [
+   18,
+   34
+  ],
+  "retry_switched|limit_exceeded|2|1": [
+   5,
+   28
+  ],
+  "retry_switched|limit_exceeded|2|2": [
+   24,
+   278
+  ],
+  "retry_switched|limit_exceeded|3": [
+   5,
+   38
+  ],
+  "retry_switched|limit_exceeded|3|1": [
+   1,
+   2
+  ],
+  "retry_switched|limit_exceeded|3|2": [
+   4,
+   36
+  ],
+  "retry_switched|mandate_expired": [
+   266,
+   300
+  ],
+  "retry_switched|mandate_expired|0": [
+   178,
+   203
+  ],
+  "retry_switched|mandate_expired|0|0": [
+   120,
+   136
+  ],
+  "retry_switched|mandate_expired|0|1": [
+   39,
+   44
+  ],
+  "retry_switched|mandate_expired|0|2": [
+   19,
+   23
+  ],
+  "retry_switched|mandate_expired|1": [
+   31,
+   32
+  ],
+  "retry_switched|mandate_expired|1|0": [
+   12,
+   13
+  ],
+  "retry_switched|mandate_expired|1|1": [
+   15,
+   15
+  ],
+  "retry_switched|mandate_expired|1|2": [
+   4,
+   4
+  ],
+  "retry_switched|mandate_expired|2": [
+   56,
+   64
+  ],
+  "retry_switched|mandate_expired|2|0": [
+   27,
+   29
+  ],
+  "retry_switched|mandate_expired|2|1": [
+   11,
+   13
+  ],
+  "retry_switched|mandate_expired|2|2": [
+   18,
+   22
+  ],
+  "retry_switched|mandate_expired|3": [
+   1,
+   1
+  ],
+  "retry_switched|mandate_expired|3|2": [
+   1,
+   1
+  ],
+  "retry_switched|network_error": [
+   257,
+   412
+  ],
+  "retry_switched|network_error|0": [
+   190,
+   340
+  ],
+  "retry_switched|network_error|0|0": [
+   167,
+   237
+  ],
+  "retry_switched|network_error|0|1": [
+   9,
+   43
+  ],
+  "retry_switched|network_error|0|2": [
+   14,
+   60
+  ],
+  "retry_switched|network_error|1": [
+   30,
+   32
+  ],
+  "retry_switched|network_error|1|0": [
+   19,
+   19
+  ],
+  "retry_switched|network_error|1|1": [
+   6,
+   7
+  ],
+  "retry_switched|network_error|1|2": [
+   5,
+   6
+  ],
+  "retry_switched|network_error|2": [
+   37,
+   40
+  ],
+  "retry_switched|network_error|2|0": [
+   19,
+   19
+  ],
+  "retry_switched|network_error|2|1": [
+   10,
+   12
+  ],
+  "retry_switched|network_error|2|2": [
+   8,
+   9
+  ],
+  "retry_switched|other": [
+   275,
+   1008
+  ],
+  "retry_switched|other|0": [
+   191,
+   505
+  ],
+  "retry_switched|other|0|0": [
+   154,
+   255
+  ],
+  "retry_switched|other|0|1": [
+   25,
+   97
+  ],
+  "retry_switched|other|0|2": [
+   12,
+   153
+  ],
+  "retry_switched|other|1": [
+   21,
+   132
+  ],
+  "retry_switched|other|1|0": [
+   8,
+   24
+  ],
+  "retry_switched|other|1|1": [
+   6,
+   25
+  ],
+  "retry_switched|other|1|2": [
+   7,
+   83
+  ],
+  "retry_switched|other|2": [
+   59,
+   317
+  ],
+  "retry_switched|other|2|0": [
+   28,
+   43
+  ],
+  "retry_switched|other|2|1": [
+   12,
+   40
+  ],
+  "retry_switched|other|2|2": [
+   19,
+   234
+  ],
+  "retry_switched|other|3": [
+   4,
+   54
+  ],
+  "retry_switched|other|3|0": [
+   2,
+   2
+  ],
+  "retry_switched|other|3|2": [
+   2,
+   52
+  ],
+  "retry_switched|payment_cancelled": [
+   399,
+   1136
+  ],
+  "retry_switched|payment_cancelled|0": [
+   314,
+   665
+  ],
+  "retry_switched|payment_cancelled|0|0": [
+   296,
+   427
+  ],
+  "retry_switched|payment_cancelled|0|1": [
+   13,
+   81
+  ],
+  "retry_switched|payment_cancelled|0|2": [
+   5,
+   157
+  ],
+  "retry_switched|payment_cancelled|1": [
+   31,
+   145
+  ],
+  "retry_switched|payment_cancelled|1|0": [
+   23,
+   35
+  ],
+  "retry_switched|payment_cancelled|1|1": [
+   2,
+   16
+  ],
+  "retry_switched|payment_cancelled|1|2": [
+   6,
+   94
+  ],
+  "retry_switched|payment_cancelled|2": [
+   51,
+   299
+  ],
+  "retry_switched|payment_cancelled|2|0": [
+   26,
+   35
+  ],
+  "retry_switched|payment_cancelled|2|1": [
+   6,
+   25
+  ],
+  "retry_switched|payment_cancelled|2|2": [
+   19,
+   239
+  ],
+  "retry_switched|payment_cancelled|3": [
+   3,
+   27
+  ],
+  "retry_switched|payment_cancelled|3|2": [
+   3,
+   27
+  ],
+  "retry_switched|payment_failed": [
+   1028,
+   2738
+  ],
+  "retry_switched|payment_failed|0": [
+   720,
+   1589
+  ],
+  "retry_switched|payment_failed|0|0": [
+   562,
+   896
+  ],
+  "retry_switched|payment_failed|0|1": [
+   87,
+   280
+  ],
+  "retry_switched|payment_failed|0|2": [
+   71,
+   413
+  ],
+  "retry_switched|payment_failed|1": [
+   114,
+   373
+  ],
+  "retry_switched|payment_failed|1|0": [
+   59,
+   86
+  ],
+  "retry_switched|payment_failed|1|1": [
+   22,
+   65
+  ],
+  "retry_switched|payment_failed|1|2": [
+   33,
+   222
+  ],
+  "retry_switched|payment_failed|2": [
+   189,
+   705
+  ],
+  "retry_switched|payment_failed|2|0": [
+   77,
+   104
+  ],
+  "retry_switched|payment_failed|2|1": [
+   39,
+   80
+  ],
+  "retry_switched|payment_failed|2|2": [
+   73,
+   521
+  ],
+  "retry_switched|payment_failed|3": [
+   5,
+   71
+  ],
+  "retry_switched|payment_failed|3|0": [
+   0,
+   1
+  ],
+  "retry_switched|payment_failed|3|1": [
+   1,
+   2
+  ],
+  "retry_switched|payment_failed|3|2": [
+   4,
+   68
+  ],
+  "retry_switched|timeout": [
+   630,
+   911
+  ],
+  "retry_switched|timeout|0": [
+   500,
+   769
+  ],
+  "retry_switched|timeout|0|0": [
+   432,
+   563
+  ],
+  "retry_switched|timeout|0|1": [
+   43,
+   100
+  ],
+  "retry_switched|timeout|0|2": [
+   25,
+   106
+  ],
+  "retry_switched|timeout|1": [
+   56,
+   61
+  ],
+  "retry_switched|timeout|1|0": [
+   35,
+   38
+  ],
+  "retry_switched|timeout|1|1": [
+   16,
+   17
+  ],
+  "retry_switched|timeout|1|2": [
+   5,
+   6
+  ],
+  "retry_switched|timeout|2": [
+   74,
+   81
+  ],
+  "retry_switched|timeout|2|0": [
+   49,
+   55
+  ],
+  "retry_switched|timeout|2|1": [
+   13,
+   14
+  ],
+  "retry_switched|timeout|2|2": [
+   12,
+   12
+  ],
+  "retry_switched|upi_psp_error": [
+   195,
+   440
+  ],
+  "retry_switched|upi_psp_error|0": [
+   120,
+   359
+  ],
+  "retry_switched|upi_psp_error|0|0": [
+   75,
+   187
+  ],
+  "retry_switched|upi_psp_error|0|1": [
+   29,
+   82
+  ],
+  "retry_switched|upi_psp_error|0|2": [
+   16,
+   90
+  ],
+  "retry_switched|upi_psp_error|1": [
+   37,
+   40
+  ],
+  "retry_switched|upi_psp_error|1|0": [
+   19,
+   21
+  ],
+  "retry_switched|upi_psp_error|1|1": [
+   8,
+   8
+  ],
+  "retry_switched|upi_psp_error|1|2": [
+   10,
+   11
+  ],
+  "retry_switched|upi_psp_error|2": [
+   37,
+   40
+  ],
+  "retry_switched|upi_psp_error|2|0": [
+   20,
+   22
+  ],
+  "retry_switched|upi_psp_error|2|1": [
+   5,
+   5
+  ],
+  "retry_switched|upi_psp_error|2|2": [
+   12,
+   13
+  ],
+  "retry_switched|upi_psp_error|3": [
+   1,
+   1
+  ],
+  "retry_switched|upi_psp_error|3|1": [
+   1,
+   1
+  ],
+  "retry_to_card": [
+   1040,
+   3534
+  ],
+  "retry_to_card|authentication_failed": [
+   60,
+   174
+  ],
+  "retry_to_card|authentication_failed|0": [
+   44,
+   124
+  ],
+  "retry_to_card|authentication_failed|0|0": [
+   40,
+   66
+  ],
+  "retry_to_card|authentication_failed|0|1": [
+   3,
+   20
+  ],
+  "retry_to_card|authentication_failed|0|2": [
+   1,
+   38
+  ],
+  "retry_to_card|authentication_failed|1": [
+   5,
+   17
+  ],
+  "retry_to_card|authentication_failed|1|0": [
+   4,
+   6
+  ],
+  "retry_to_card|authentication_failed|1|1": [
+   0,
+   1
+  ],
+  "retry_to_card|authentication_failed|1|2": [
+   1,
+   10
+  ],
+  "retry_to_card|authentication_failed|2": [
+   10,
+   28
+  ],
+  "retry_to_card|authentication_failed|2|0": [
+   3,
+   5
+  ],
+  "retry_to_card|authentication_failed|2|1": [
+   5,
+   6
+  ],
+  "retry_to_card|authentication_failed|2|2": [
+   2,
+   17
+  ],
+  "retry_to_card|authentication_failed|3": [
+   1,
+   5
+  ],
+  "retry_to_card|authentication_failed|3|1": [
+   1,
+   1
+  ],
+  "retry_to_card|authentication_failed|3|2": [
+   0,
+   4
+  ],
+  "retry_to_card|bank_not_enabled": [
+   59,
+   88
+  ],
+  "retry_to_card|bank_not_enabled|0": [
+   37,
+   63
+  ],
+  "retry_to_card|bank_not_enabled|0|0": [
+   27,
+   40
+  ],
+  "retry_to_card|bank_not_enabled|0|1": [
+   7,
+   11
+  ],
+  "retry_to_card|bank_not_enabled|0|2": [
+   3,
+   12
+  ],
+  "retry_to_card|bank_not_enabled|1": [
+   10,
+   13
+  ],
+  "retry_to_card|bank_not_enabled|1|0": [
+   4,
+   4
+  ],
+  "retry_to_card|bank_not_enabled|1|1": [
+   6,
+   6
+  ],
+  "retry_to_card|bank_not_enabled|1|2": [
+   0,
+   3
+  ],
+  "retry_to_card|bank_not_enabled|2": [
+   12,
+   12
+  ],
+  "retry_to_card|bank_not_enabled|2|0": [
+   6,
+   6
+  ],
+  "retry_to_card|bank_not_enabled|2|1": [
+   3,
+   3
+  ],
+  "retry_to_card|bank_not_enabled|2|2": [
+   3,
+   3
+  ],
+  "retry_to_card|card_blocked": [
+   48,
+   76
+  ],
+  "retry_to_card|card_blocked|0": [
+   37,
+   55
+  ],
+  "retry_to_card|card_blocked|0|0": [
+   26,
+   30
+  ],
+  "retry_to_card|card_blocked|0|1": [
+   7,
+   13
+  ],
+  "retry_to_card|card_blocked|0|2": [
+   4,
+   12
+  ],
+  "retry_to_card|card_blocked|1": [
+   4,
+   7
+  ],
+  "retry_to_card|card_blocked|1|0": [
+   2,
+   2
+  ],
+  "retry_to_card|card_blocked|1|1": [
+   2,
+   2
+  ],
+  "retry_to_card|card_blocked|1|2": [
+   0,
+   3
+  ],
+  "retry_to_card|card_blocked|2": [
+   7,
+   14
+  ],
+  "retry_to_card|card_blocked|2|0": [
+   5,
+   5
+  ],
+  "retry_to_card|card_blocked|2|2": [
+   2,
+   9
+  ],
+  "retry_to_card|gateway_technical_error": [
+   126,
+   247
+  ],
+  "retry_to_card|gateway_technical_error|0": [
+   81,
+   187
+  ],
+  "retry_to_card|gateway_technical_error|0|0": [
+   61,
+   113
+  ],
+  "retry_to_card|gateway_technical_error|0|1": [
+   12,
+   33
+  ],
+  "retry_to_card|gateway_technical_error|0|2": [
+   8,
+   41
+  ],
+  "retry_to_card|gateway_technical_error|1": [
+   21,
+   30
+  ],
+  "retry_to_card|gateway_technical_error|1|0": [
+   9,
+   9
+  ],
+  "retry_to_card|gateway_technical_error|1|1": [
+   6,
+   8
+  ],
+  "retry_to_card|gateway_technical_error|1|2": [
+   6,
+   13
+  ],
+  "retry_to_card|gateway_technical_error|2": [
+   23,
+   29
+  ],
+  "retry_to_card|gateway_technical_error|2|0": [
+   14,
+   15
+  ],
+  "retry_to_card|gateway_technical_error|2|1": [
+   2,
+   3
+  ],
+  "retry_to_card|gateway_technical_error|2|2": [
+   7,
+   11
+  ],
+  "retry_to_card|gateway_technical_error|3": [
+   1,
+   1
+  ],
+  "retry_to_card|gateway_technical_error|3|2": [
+   1,
+   1
+  ],
+  "retry_to_card|insufficient_funds": [
+   29,
+   798
+  ],
+  "retry_to_card|insufficient_funds|0": [
+   13,
+   296
+  ],
+  "retry_to_card|insufficient_funds|0|0": [
+   11,
+   101
+  ],
+  "retry_to_card|insufficient_funds|0|1": [
+   2,
+   55
+  ],
+  "retry_to_card|insufficient_funds|0|2": [
+   0,
+   140
+  ],
+  "retry_to_card|insufficient_funds|1": [
+   4,
+   134
+  ],
+  "retry_to_card|insufficient_funds|1|0": [
+   4,
+   15
+  ],
+  "retry_to_card|insufficient_funds|1|1": [
+   0,
+   15
+  ],
+  "retry_to_card|insufficient_funds|1|2": [
+   0,
+   104
+  ],
+  "retry_to_card|insufficient_funds|2": [
+   12,
+   328
+  ],
+  "retry_to_card|insufficient_funds|2|0": [
+   3,
+   19
+  ],
+  "retry_to_card|insufficient_funds|2|1": [
+   1,
+   23
+  ],
+  "retry_to_card|insufficient_funds|2|2": [
+   8,
+   286
+  ],
+  "retry_to_card|insufficient_funds|3": [
+   0,
+   40
+  ],
+  "retry_to_card|insufficient_funds|3|2": [
+   0,
+   40
+  ],
+  "retry_to_card|invalid_card": [
+   36,
+   116
+  ],
+  "retry_to_card|invalid_card|0": [
+   23,
+   67
+  ],
+  "retry_to_card|invalid_card|0|0": [
+   14,
+   30
+  ],
+  "retry_to_card|invalid_card|0|1": [
+   6,
+   12
+  ],
+  "retry_to_card|invalid_card|0|2": [
+   3,
+   25
+  ],
+  "retry_to_card|invalid_card|1": [
+   4,
+   20
+  ],
+  "retry_to_card|invalid_card|1|0": [
+   3,
+   3
+  ],
+  "retry_to_card|invalid_card|1|1": [
+   1,
+   2
+  ],
+  "retry_to_card|invalid_card|1|2": [
+   0,
+   15
+  ],
+  "retry_to_card|invalid_card|2": [
+   8,
+   27
+  ],
+  "retry_to_card|invalid_card|2|0": [
+   4,
+   5
+  ],
+  "retry_to_card|invalid_card|2|1": [
+   3,
+   4
+  ],
+  "retry_to_card|invalid_card|2|2": [
+   1,
+   18
+  ],
+  "retry_to_card|invalid_card|3": [
+   1,
+   2
+  ],
+  "retry_to_card|invalid_card|3|1": [
+   1,
+   1
+  ],
+  "retry_to_card|invalid_card|3|2": [
+   0,
+   1
+  ],
+  "retry_to_card|limit_exceeded": [
+   35,
+   249
+  ],
+  "retry_to_card|limit_exceeded|0": [
+   23,
+   117
+  ],
+  "retry_to_card|limit_exceeded|0|0": [
+   19,
+   49
+  ],
+  "retry_to_card|limit_exceeded|0|1": [
+   2,
+   23
+  ],
+  "retry_to_card|limit_exceeded|0|2": [
+   2,
+   45
+  ],
+  "retry_to_card|limit_exceeded|1": [
+   4,
+   29
+  ],
+  "retry_to_card|limit_exceeded|1|0": [
+   2,
+   3
+  ],
+  "retry_to_card|limit_exceeded|1|1": [
+   0,
+   2
+  ],
+  "retry_to_card|limit_exceeded|1|2": [
+   2,
+   24
+  ],
+  "retry_to_card|limit_exceeded|2": [
+   6,
+   92
+  ],
+  "retry_to_card|limit_exceeded|2|0": [
+   2,
+   6
+  ],
+  "retry_to_card|limit_exceeded|2|1": [
+   1,
+   9
+  ],
+  "retry_to_card|limit_exceeded|2|2": [
+   3,
+   77
+  ],
+  "retry_to_card|limit_exceeded|3": [
+   2,
+   11
+  ],
+  "retry_to_card|limit_exceeded|3|1": [
+   1,
+   1
+  ],
+  "retry_to_card|limit_exceeded|3|2": [
+   1,
+   10
+  ],
+  "retry_to_card|mandate_expired": [
+   40,
+   46
+  ],
+  "retry_to_card|mandate_expired|0": [
+   28,
+   31
+  ],
+  "retry_to_card|mandate_expired|0|0": [
+   17,
+   19
+  ],
+  "retry_to_card|mandate_expired|0|1": [
+   9,
+   10
+  ],
+  "retry_to_card|mandate_expired|0|2": [
+   2,
+   2
+  ],
+  "retry_to_card|mandate_expired|1": [
+   2,
+   2
+  ],
+  "retry_to_card|mandate_expired|1|0": [
+   1,
+   1
+  ],
+  "retry_to_card|mandate_expired|1|1": [
+   1,
+   1
+  ],
+  "retry_to_card|mandate_expired|2": [
+   10,
+   13
+  ],
+  "retry_to_card|mandate_expired|2|0": [
+   6,
+   6
+  ],
+  "retry_to_card|mandate_expired|2|1": [
+   3,
+   5
+  ],
+  "retry_to_card|mandate_expired|2|2": [
+   1,
+   2
+  ],
+  "retry_to_card|network_error": [
+   81,
+   124
+  ],
+  "retry_to_card|network_error|0": [
+   63,
+   105
+  ],
+  "retry_to_card|network_error|0|0": [
+   55,
+   71
+  ],
+  "retry_to_card|network_error|0|1": [
+   3,
+   18
+  ],
+  "retry_to_card|network_error|0|2": [
+   5,
+   16
+  ],
+  "retry_to_card|network_error|1": [
+   12,
+   13
+  ],
+  "retry_to_card|network_error|1|0": [
+   7,
+   7
+  ],
+  "retry_to_card|network_error|1|1": [
+   2,
+   3
+  ],
+  "retry_to_card|network_error|1|2": [
+   3,
+   3
+  ],
+  "retry_to_card|network_error|2": [
+   6,
+   6
+  ],
+  "retry_to_card|network_error|2|0": [
+   4,
+   4
+  ],
+  "retry_to_card|network_error|2|1": [
+   2,
+   2
+  ],
+  "retry_to_card|other": [
+   51,
+   257
+  ],
+  "retry_to_card|other|0": [
+   35,
+   132
+  ],
+  "retry_to_card|other|0|0": [
+   30,
+   59
+  ],
+  "retry_to_card|other|0|1": [
+   4,
+   31
+  ],
+  "retry_to_card|other|0|2": [
+   1,
+   42
+  ],
+  "retry_to_card|other|1": [
+   1,
+   32
+  ],
+  "retry_to_card|other|1|0": [
+   1,
+   9
+  ],
+  "retry_to_card|other|1|1": [
+   0,
+   7
+  ],
+  "retry_to_card|other|1|2": [
+   0,
+   16
+  ],
+  "retry_to_card|other|2": [
+   14,
+   79
+  ],
+  "retry_to_card|other|2|0": [
+   7,
+   9
+  ],
+  "retry_to_card|other|2|1": [
+   2,
+   10
+  ],
+  "retry_to_card|other|2|2": [
+   5,
+   60
+  ],
+  "retry_to_card|other|3": [
+   1,
+   14
+  ],
+  "retry_to_card|other|3|2": [
+   1,
+   14
+  ],
+  "retry_to_card|payment_cancelled": [
+   56,
+   292
+  ],
+  "retry_to_card|payment_cancelled|0": [
+   42,
+   146
+  ],
+  "retry_to_card|payment_cancelled|0|0": [
+   41,
+   76
+  ],
+  "retry_to_card|payment_cancelled|0|1": [
+   1,
+   22
+  ],
+  "retry_to_card|payment_cancelled|0|2": [
+   0,
+   48
+  ],
+  "retry_to_card|payment_cancelled|1": [
+   4,
+   39
+  ],
+  "retry_to_card|payment_cancelled|1|0": [
+   2,
+   5
+  ],
+  "retry_to_card|payment_cancelled|1|1": [
+   1,
+   7
+  ],
+  "retry_to_card|payment_cancelled|1|2": [
+   1,
+   27
+  ],
+  "retry_to_card|payment_cancelled|2": [
+   9,
+   99
+  ],
+  "retry_to_card|payment_cancelled|2|0": [
+   4,
+   5
+  ],
+  "retry_to_card|payment_cancelled|2|1": [
+   0,
+   7
+  ],
+  "retry_to_card|payment_cancelled|2|2": [
+   5,
+   87
+  ],
+  "retry_to_card|payment_cancelled|3": [
+   1,
+   8
+  ],
+  "retry_to_card|payment_cancelled|3|2": [
+   1,
+   8
+  ],
+  "retry_to_card|payment_failed": [
+   194,
+   687
+  ],
+  "retry_to_card|payment_failed|0": [
+   137,
+   375
+  ],
+  "retry_to_card|payment_failed|0|0": [
+   107,
+   216
+  ],
+  "retry_to_card|payment_failed|0|1": [
+   20,
+   72
+  ],
+  "retry_to_card|payment_failed|0|2": [
+   10,
+   87
+  ],
+  "retry_to_card|payment_failed|1": [
+   18,
+   103
+  ],
+  "retry_to_card|payment_failed|1|0": [
+   11,
+   16
+  ],
+  "retry_to_card|payment_failed|1|1": [
+   3,
+   19
+  ],
+  "retry_to_card|payment_failed|1|2": [
+   4,
+   68
+  ],
+  "retry_to_card|payment_failed|2": [
+   36,
+   184
+  ],
+  "retry_to_card|payment_failed|2|0": [
+   15,
+   23
+  ],
+  "retry_to_card|payment_failed|2|1": [
+   8,
+   21
+  ],
+  "retry_to_card|payment_failed|2|2": [
+   13,
+   140
+  ],
+  "retry_to_card|payment_failed|3": [
+   3,
+   25
+  ],
+  "retry_to_card|payment_failed|3|2": [
+   3,
+   25
+  ],
+  "retry_to_card|timeout": [
+   169,
+   246
+  ],
+  "retry_to_card|timeout|0": [
+   131,
+   205
+  ],
+  "retry_to_card|timeout|0|0": [
+   109,
+   147
+  ],
+  "retry_to_card|timeout|0|1": [
+   11,
+   27
+  ],
+  "retry_to_card|timeout|0|2": [
+   11,
+   31
+  ],
+  "retry_to_card|timeout|1": [
+   16,
+   17
+  ],
+  "retry_to_card|timeout|1|0": [
+   11,
+   11
+  ],
+  "retry_to_card|timeout|1|1": [
+   5,
+   5
+  ],
+  "retry_to_card|timeout|1|2": [
+   0,
+   1
+  ],
+  "retry_to_card|timeout|2": [
+   22,
+   24
+  ],
+  "retry_to_card|timeout|2|0": [
+   13,
+   15
+  ],
+  "retry_to_card|timeout|2|1": [
+   6,
+   6
+  ],
+  "retry_to_card|timeout|2|2": [
+   3,
+   3
+  ],
+  "retry_to_card|upi_psp_error": [
+   56,
+   134
+  ],
+  "retry_to_card|upi_psp_error|0": [
+   28,
+   104
+  ],
+  "retry_to_card|upi_psp_error|0|0": [
+   19,
+   49
+  ],
+  "retry_to_card|upi_psp_error|0|1": [
+   3,
+   22
+  ],
+  "retry_to_card|upi_psp_error|0|2": [
+   6,
+   33
+  ],
+  "retry_to_card|upi_psp_error|1": [
+   16,
+   18
+  ],
+  "retry_to_card|upi_psp_error|1|0": [
+   9,
+   11
+  ],
+  "retry_to_card|upi_psp_error|1|1": [
+   2,
+   2
+  ],
+  "retry_to_card|upi_psp_error|1|2": [
+   5,
+   5
+  ],
+  "retry_to_card|upi_psp_error|2": [
+   11,
+   11
+  ],
+  "retry_to_card|upi_psp_error|2|0": [
+   8,
+   8
+  ],
+  "retry_to_card|upi_psp_error|2|1": [
+   1,
+   1
+  ],
+  "retry_to_card|upi_psp_error|2|2": [
+   2,
+   2
+  ],
+  "retry_to_card|upi_psp_error|3": [
+   1,
+   1
+  ],
+  "retry_to_card|upi_psp_error|3|1": [
+   1,
+   1
+  ],
+  "retry_to_netbanking": [
+   797,
+   2504
+  ],
+  "retry_to_netbanking|authentication_failed": [
+   58,
+   135
+  ],
+  "retry_to_netbanking|authentication_failed|0": [
+   45,
+   86
+  ],
+  "retry_to_netbanking|authentication_failed|0|0": [
+   42,
+   57
+  ],
+  "retry_to_netbanking|authentication_failed|0|1": [
+   3,
+   13
+  ],
+  "retry_to_netbanking|authentication_failed|0|2": [
+   0,
+   16
+  ],
+  "retry_to_netbanking|authentication_failed|1": [
+   6,
+   21
+  ],
+  "retry_to_netbanking|authentication_failed|1|0": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|authentication_failed|1|1": [
+   1,
+   4
+  ],
+  "retry_to_netbanking|authentication_failed|1|2": [
+   1,
+   13
+  ],
+  "retry_to_netbanking|authentication_failed|2": [
+   7,
+   25
+  ],
+  "retry_to_netbanking|authentication_failed|2|0": [
+   5,
+   6
+  ],
+  "retry_to_netbanking|authentication_failed|2|1": [
+   0,
+   2
+  ],
+  "retry_to_netbanking|authentication_failed|2|2": [
+   2,
+   17
+  ],
+  "retry_to_netbanking|authentication_failed|3": [
+   0,
+   3
+  ],
+  "retry_to_netbanking|authentication_failed|3|2": [
+   0,
+   3
+  ],
+  "retry_to_netbanking|bank_not_enabled": [
+   30,
+   40
+  ],
+  "retry_to_netbanking|bank_not_enabled|0": [
+   21,
+   31
+  ],
+  "retry_to_netbanking|bank_not_enabled|0|0": [
+   15,
+   18
+  ],
+  "retry_to_netbanking|bank_not_enabled|0|1": [
+   6,
+   7
+  ],
+  "retry_to_netbanking|bank_not_enabled|0|2": [
+   0,
+   6
+  ],
+  "retry_to_netbanking|bank_not_enabled|1": [
+   3,
+   3
+  ],
+  "retry_to_netbanking|bank_not_enabled|1|0": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|bank_not_enabled|1|2": [
+   2,
+   2
+  ],
+  "retry_to_netbanking|bank_not_enabled|2": [
+   6,
+   6
+  ],
+  "retry_to_netbanking|bank_not_enabled|2|0": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|bank_not_enabled|2|2": [
+   2,
+   2
+  ],
+  "retry_to_netbanking|card_blocked": [
+   63,
+   91
+  ],
+  "retry_to_netbanking|card_blocked|0": [
+   43,
+   58
+  ],
+  "retry_to_netbanking|card_blocked|0|0": [
+   37,
+   44
+  ],
+  "retry_to_netbanking|card_blocked|0|1": [
+   4,
+   6
+  ],
+  "retry_to_netbanking|card_blocked|0|2": [
+   2,
+   8
+  ],
+  "retry_to_netbanking|card_blocked|1": [
+   9,
+   15
+  ],
+  "retry_to_netbanking|card_blocked|1|0": [
+   4,
+   5
+  ],
+  "retry_to_netbanking|card_blocked|1|1": [
+   5,
+   6
+  ],
+  "retry_to_netbanking|card_blocked|1|2": [
+   0,
+   4
+  ],
+  "retry_to_netbanking|card_blocked|2": [
+   11,
+   18
+  ],
+  "retry_to_netbanking|card_blocked|2|0": [
+   6,
+   6
+  ],
+  "retry_to_netbanking|card_blocked|2|1": [
+   3,
+   5
+  ],
+  "retry_to_netbanking|card_blocked|2|2": [
+   2,
+   7
+  ],
+  "retry_to_netbanking|gateway_technical_error": [
+   56,
+   112
+  ],
+  "retry_to_netbanking|gateway_technical_error|0": [
+   38,
+   93
+  ],
+  "retry_to_netbanking|gateway_technical_error|0|0": [
+   29,
+   57
+  ],
+  "retry_to_netbanking|gateway_technical_error|0|1": [
+   5,
+   19
+  ],
+  "retry_to_netbanking|gateway_technical_error|0|2": [
+   4,
+   17
+  ],
+  "retry_to_netbanking|gateway_technical_error|1": [
+   10,
+   11
+  ],
+  "retry_to_netbanking|gateway_technical_error|1|0": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|gateway_technical_error|1|1": [
+   2,
+   3
+  ],
+  "retry_to_netbanking|gateway_technical_error|1|2": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|gateway_technical_error|2": [
+   8,
+   8
+  ],
+  "retry_to_netbanking|gateway_technical_error|2|0": [
+   7,
+   7
+  ],
+  "retry_to_netbanking|gateway_technical_error|2|2": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|insufficient_funds": [
+   20,
+   648
+  ],
+  "retry_to_netbanking|insufficient_funds|0": [
+   9,
+   269
+  ],
+  "retry_to_netbanking|insufficient_funds|0|0": [
+   6,
+   93
+  ],
+  "retry_to_netbanking|insufficient_funds|0|1": [
+   2,
+   62
+  ],
+  "retry_to_netbanking|insufficient_funds|0|2": [
+   1,
+   114
+  ],
+  "retry_to_netbanking|insufficient_funds|1": [
+   2,
+   107
+  ],
+  "retry_to_netbanking|insufficient_funds|1|0": [
+   2,
+   12
+  ],
+  "retry_to_netbanking|insufficient_funds|1|1": [
+   0,
+   12
+  ],
+  "retry_to_netbanking|insufficient_funds|1|2": [
+   0,
+   83
+  ],
+  "retry_to_netbanking|insufficient_funds|2": [
+   8,
+   253
+  ],
+  "retry_to_netbanking|insufficient_funds|2|0": [
+   1,
+   10
+  ],
+  "retry_to_netbanking|insufficient_funds|2|1": [
+   1,
+   16
+  ],
+  "retry_to_netbanking|insufficient_funds|2|2": [
+   6,
+   227
+  ],
+  "retry_to_netbanking|insufficient_funds|3": [
+   1,
+   19
+  ],
+  "retry_to_netbanking|insufficient_funds|3|1": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|insufficient_funds|3|2": [
+   0,
+   18
+  ],
+  "retry_to_netbanking|invalid_card": [
+   57,
+   102
+  ],
+  "retry_to_netbanking|invalid_card|0": [
+   44,
+   77
+  ],
+  "retry_to_netbanking|invalid_card|0|0": [
+   30,
+   36
+  ],
+  "retry_to_netbanking|invalid_card|0|1": [
+   8,
+   14
+  ],
+  "retry_to_netbanking|invalid_card|0|2": [
+   6,
+   27
+  ],
+  "retry_to_netbanking|invalid_card|1": [
+   8,
+   10
+  ],
+  "retry_to_netbanking|invalid_card|1|0": [
+   4,
+   5
+  ],
+  "retry_to_netbanking|invalid_card|1|1": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|invalid_card|1|2": [
+   0,
+   1
+  ],
+  "retry_to_netbanking|invalid_card|2": [
+   5,
+   15
+  ],
+  "retry_to_netbanking|invalid_card|2|0": [
+   2,
+   3
+  ],
+  "retry_to_netbanking|invalid_card|2|1": [
+   2,
+   2
+  ],
+  "retry_to_netbanking|invalid_card|2|2": [
+   1,
+   10
+  ],
+  "retry_to_netbanking|limit_exceeded": [
+   48,
+   217
+  ],
+  "retry_to_netbanking|limit_exceeded|0": [
+   39,
+   114
+  ],
+  "retry_to_netbanking|limit_exceeded|0|0": [
+   27,
+   49
+  ],
+  "retry_to_netbanking|limit_exceeded|0|1": [
+   10,
+   29
+  ],
+  "retry_to_netbanking|limit_exceeded|0|2": [
+   2,
+   36
+  ],
+  "retry_to_netbanking|limit_exceeded|1": [
+   3,
+   28
+  ],
+  "retry_to_netbanking|limit_exceeded|1|0": [
+   2,
+   3
+  ],
+  "retry_to_netbanking|limit_exceeded|1|1": [
+   0,
+   3
+  ],
+  "retry_to_netbanking|limit_exceeded|1|2": [
+   1,
+   22
+  ],
+  "retry_to_netbanking|limit_exceeded|2": [
+   6,
+   71
+  ],
+  "retry_to_netbanking|limit_exceeded|2|0": [
+   2,
+   3
+  ],
+  "retry_to_netbanking|limit_exceeded|2|1": [
+   0,
+   6
+  ],
+  "retry_to_netbanking|limit_exceeded|2|2": [
+   4,
+   62
+  ],
+  "retry_to_netbanking|limit_exceeded|3": [
+   0,
+   4
+  ],
+  "retry_to_netbanking|limit_exceeded|3|2": [
+   0,
+   4
+  ],
+  "retry_to_netbanking|mandate_expired": [
+   45,
+   47
+  ],
+  "retry_to_netbanking|mandate_expired|0": [
+   34,
+   36
+  ],
+  "retry_to_netbanking|mandate_expired|0|0": [
+   27,
+   29
+  ],
+  "retry_to_netbanking|mandate_expired|0|1": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|mandate_expired|0|2": [
+   3,
+   3
+  ],
+  "retry_to_netbanking|mandate_expired|1": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|mandate_expired|1|1": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|mandate_expired|2": [
+   7,
+   7
+  ],
+  "retry_to_netbanking|mandate_expired|2|0": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|mandate_expired|2|1": [
+   2,
+   2
+  ],
+  "retry_to_netbanking|mandate_expired|2|2": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|network_error": [
+   53,
+   83
+  ],
+  "retry_to_netbanking|network_error|0": [
+   40,
+   70
+  ],
+  "retry_to_netbanking|network_error|0|0": [
+   35,
+   52
+  ],
+  "retry_to_netbanking|network_error|0|1": [
+   2,
+   6
+  ],
+  "retry_to_netbanking|network_error|0|2": [
+   3,
+   12
+  ],
+  "retry_to_netbanking|network_error|1": [
+   8,
+   8
+  ],
+  "retry_to_netbanking|network_error|1|0": [
+   6,
+   6
+  ],
+  "retry_to_netbanking|network_error|1|1": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|network_error|1|2": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|network_error|2": [
+   5,
+   5
+  ],
+  "retry_to_netbanking|network_error|2|0": [
+   3,
+   3
+  ],
+  "retry_to_netbanking|network_error|2|1": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|network_error|2|2": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|other": [
+   23,
+   119
+  ],
+  "retry_to_netbanking|other|0": [
+   20,
+   49
+  ],
+  "retry_to_netbanking|other|0|0": [
+   16,
+   27
+  ],
+  "retry_to_netbanking|other|0|1": [
+   4,
+   10
+  ],
+  "retry_to_netbanking|other|0|2": [
+   0,
+   12
+  ],
+  "retry_to_netbanking|other|1": [
+   1,
+   17
+  ],
+  "retry_to_netbanking|other|1|0": [
+   1,
+   2
+  ],
+  "retry_to_netbanking|other|1|1": [
+   0,
+   2
+  ],
+  "retry_to_netbanking|other|1|2": [
+   0,
+   13
+  ],
+  "retry_to_netbanking|other|2": [
+   1,
+   38
+  ],
+  "retry_to_netbanking|other|2|0": [
+   0,
+   4
+  ],
+  "retry_to_netbanking|other|2|1": [
+   0,
+   6
+  ],
+  "retry_to_netbanking|other|2|2": [
+   1,
+   28
+  ],
+  "retry_to_netbanking|other|3": [
+   1,
+   15
+  ],
+  "retry_to_netbanking|other|3|0": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|other|3|2": [
+   0,
+   14
+  ],
+  "retry_to_netbanking|payment_cancelled": [
+   61,
+   199
+  ],
+  "retry_to_netbanking|payment_cancelled|0": [
+   51,
+   112
+  ],
+  "retry_to_netbanking|payment_cancelled|0|0": [
+   49,
+   72
+  ],
+  "retry_to_netbanking|payment_cancelled|0|1": [
+   2,
+   16
+  ],
+  "retry_to_netbanking|payment_cancelled|0|2": [
+   0,
+   24
+  ],
+  "retry_to_netbanking|payment_cancelled|1": [
+   4,
+   22
+  ],
+  "retry_to_netbanking|payment_cancelled|1|0": [
+   2,
+   6
+  ],
+  "retry_to_netbanking|payment_cancelled|1|2": [
+   2,
+   16
+  ],
+  "retry_to_netbanking|payment_cancelled|2": [
+   6,
+   62
+  ],
+  "retry_to_netbanking|payment_cancelled|2|0": [
+   2,
+   5
+  ],
+  "retry_to_netbanking|payment_cancelled|2|1": [
+   2,
+   6
+  ],
+  "retry_to_netbanking|payment_cancelled|2|2": [
+   2,
+   51
+  ],
+  "retry_to_netbanking|payment_cancelled|3": [
+   0,
+   3
+  ],
+  "retry_to_netbanking|payment_cancelled|3|2": [
+   0,
+   3
+  ],
+  "retry_to_netbanking|payment_failed": [
+   151,
+   496
+  ],
+  "retry_to_netbanking|payment_failed|0": [
+   106,
+   273
+  ],
+  "retry_to_netbanking|payment_failed|0|0": [
+   90,
+   141
+  ],
+  "retry_to_netbanking|payment_failed|0|1": [
+   8,
+   53
+  ],
+  "retry_to_netbanking|payment_failed|0|2": [
+   8,
+   79
+  ],
+  "retry_to_netbanking|payment_failed|1": [
+   17,
+   71
+  ],
+  "retry_to_netbanking|payment_failed|1|0": [
+   8,
+   17
+  ],
+  "retry_to_netbanking|payment_failed|1|1": [
+   5,
+   14
+  ],
+  "retry_to_netbanking|payment_failed|1|2": [
+   4,
+   40
+  ],
+  "retry_to_netbanking|payment_failed|2": [
+   27,
+   133
+  ],
+  "retry_to_netbanking|payment_failed|2|0": [
+   11,
+   15
+  ],
+  "retry_to_netbanking|payment_failed|2|1": [
+   5,
+   10
+  ],
+  "retry_to_netbanking|payment_failed|2|2": [
+   11,
+   108
+  ],
+  "retry_to_netbanking|payment_failed|3": [
+   1,
+   19
+  ],
+  "retry_to_netbanking|payment_failed|3|1": [
+   1,
+   2
+  ],
+  "retry_to_netbanking|payment_failed|3|2": [
+   0,
+   17
+  ],
+  "retry_to_netbanking|timeout": [
+   103,
+   138
+  ],
+  "retry_to_netbanking|timeout|0": [
+   81,
+   114
+  ],
+  "retry_to_netbanking|timeout|0|0": [
+   72,
+   86
+  ],
+  "retry_to_netbanking|timeout|0|1": [
+   6,
+   11
+  ],
+  "retry_to_netbanking|timeout|0|2": [
+   3,
+   17
+  ],
+  "retry_to_netbanking|timeout|1": [
+   8,
+   9
+  ],
+  "retry_to_netbanking|timeout|1|0": [
+   4,
+   4
+  ],
+  "retry_to_netbanking|timeout|1|1": [
+   3,
+   4
+  ],
+  "retry_to_netbanking|timeout|1|2": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|timeout|2": [
+   14,
+   15
+  ],
+  "retry_to_netbanking|timeout|2|0": [
+   10,
+   11
+  ],
+  "retry_to_netbanking|timeout|2|1": [
+   3,
+   3
+  ],
+  "retry_to_netbanking|timeout|2|2": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|upi_psp_error": [
+   29,
+   77
+  ],
+  "retry_to_netbanking|upi_psp_error|0": [
+   19,
+   65
+  ],
+  "retry_to_netbanking|upi_psp_error|0|0": [
+   10,
+   33
+  ],
+  "retry_to_netbanking|upi_psp_error|0|1": [
+   6,
+   15
+  ],
+  "retry_to_netbanking|upi_psp_error|0|2": [
+   3,
+   17
+  ],
+  "retry_to_netbanking|upi_psp_error|1": [
+   4,
+   5
+  ],
+  "retry_to_netbanking|upi_psp_error|1|0": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|upi_psp_error|1|1": [
+   1,
+   1
+  ],
+  "retry_to_netbanking|upi_psp_error|1|2": [
+   2,
+   3
+  ],
+  "retry_to_netbanking|upi_psp_error|2": [
+   6,
+   7
+  ],
+  "retry_to_netbanking|upi_psp_error|2|0": [
+   1,
+   2
+  ],
+  "retry_to_netbanking|upi_psp_error|2|1": [
+   3,
+   3
+  ],
+  "retry_to_netbanking|upi_psp_error|2|2": [
+   2,
+   2
+  ],
+  "retry_to_upi": [
+   2500,
+   6711
+  ],
+  "retry_to_upi|authentication_failed": [
+   171,
+   471
+  ],
+  "retry_to_upi|authentication_failed|0": [
+   133,
+   338
+  ],
+  "retry_to_upi|authentication_failed|0|0": [
+   124,
+   188
+  ],
+  "retry_to_upi|authentication_failed|0|1": [
+   8,
+   51
+  ],
+  "retry_to_upi|authentication_failed|0|2": [
+   1,
+   99
+  ],
+  "retry_to_upi|authentication_failed|1": [
+   13,
+   40
+  ],
+  "retry_to_upi|authentication_failed|1|0": [
+   10,
+   13
+  ],
+  "retry_to_upi|authentication_failed|1|1": [
+   2,
+   10
+  ],
+  "retry_to_upi|authentication_failed|1|2": [
+   1,
+   17
+  ],
+  "retry_to_upi|authentication_failed|2": [
+   25,
+   88
+  ],
+  "retry_to_upi|authentication_failed|2|0": [
+   18,
+   20
+  ],
+  "retry_to_upi|authentication_failed|2|1": [
+   2,
+   6
+  ],
+  "retry_to_upi|authentication_failed|2|2": [
+   5,
+   62
+  ],
+  "retry_to_upi|authentication_failed|3": [
+   0,
+   5
+  ],
+  "retry_to_upi|authentication_failed|3|2": [
+   0,
+   5
+  ],
+  "retry_to_upi|bank_not_enabled": [
+   98,
+   129
+  ],
+  "retry_to_upi|bank_not_enabled|0": [
+   77,
+   106
+  ],
+  "retry_to_upi|bank_not_enabled|0|0": [
+   56,
+   72
+  ],
+  "retry_to_upi|bank_not_enabled|0|1": [
+   14,
+   21
+  ],
+  "retry_to_upi|bank_not_enabled|0|2": [
+   7,
+   13
+  ],
+  "retry_to_upi|bank_not_enabled|1": [
+   5,
+   5
+  ],
+  "retry_to_upi|bank_not_enabled|1|0": [
+   3,
+   3
+  ],
+  "retry_to_upi|bank_not_enabled|1|1": [
+   1,
+   1
+  ],
+  "retry_to_upi|bank_not_enabled|1|2": [
+   1,
+   1
+  ],
+  "retry_to_upi|bank_not_enabled|2": [
+   16,
+   18
+  ],
+  "retry_to_upi|bank_not_enabled|2|0": [
+   6,
+   7
+  ],
+  "retry_to_upi|bank_not_enabled|2|1": [
+   3,
+   4
+  ],
+  "retry_to_upi|bank_not_enabled|2|2": [
+   7,
+   7
+  ],
+  "retry_to_upi|card_blocked": [
+   221,
+   293
+  ],
+  "retry_to_upi|card_blocked|0": [
+   150,
+   193
+  ],
+  "retry_to_upi|card_blocked|0|0": [
+   101,
+   125
+  ],
+  "retry_to_upi|card_blocked|0|1": [
+   31,
+   39
+  ],
+  "retry_to_upi|card_blocked|0|2": [
+   18,
+   29
+  ],
+  "retry_to_upi|card_blocked|1": [
+   31,
+   46
+  ],
+  "retry_to_upi|card_blocked|1|0": [
+   14,
+   18
+  ],
+  "retry_to_upi|card_blocked|1|1": [
+   7,
+   9
+  ],
+  "retry_to_upi|card_blocked|1|2": [
+   10,
+   19
+  ],
+  "retry_to_upi|card_blocked|2": [
+   39,
+   53
+  ],
+  "retry_to_upi|card_blocked|2|0": [
+   12,
+   12
+  ],
+  "retry_to_upi|card_blocked|2|1": [
+   15,
+   17
+  ],
+  "retry_to_upi|card_blocked|2|2": [
+   12,
+   24
+  ],
+  "retry_to_upi|card_blocked|3": [
+   1,
+   1
+  ],
+  "retry_to_upi|card_blocked|3|2": [
+   1,
+   1
+  ],
+  "retry_to_upi|gateway_technical_error": [
+   168,
+   327
+  ],
+  "retry_to_upi|gateway_technical_error|0": [
+   95,
+   241
+  ],
+  "retry_to_upi|gateway_technical_error|0|0": [
+   72,
+   141
+  ],
+  "retry_to_upi|gateway_technical_error|0|1": [
+   18,
+   44
+  ],
+  "retry_to_upi|gateway_technical_error|0|2": [
+   5,
+   56
+  ],
+  "retry_to_upi|gateway_technical_error|1": [
+   31,
+   34
+  ],
+  "retry_to_upi|gateway_technical_error|1|0": [
+   21,
+   21
+  ],
+  "retry_to_upi|gateway_technical_error|1|1": [
+   5,
+   5
+  ],
+  "retry_to_upi|gateway_technical_error|1|2": [
+   5,
+   8
+  ],
+  "retry_to_upi|gateway_technical_error|2": [
+   41,
+   51
+  ],
+  "retry_to_upi|gateway_technical_error|2|0": [
+   22,
+   26
+  ],
+  "retry_to_upi|gateway_technical_error|2|1": [
+   7,
+   9
+  ],
+  "retry_to_upi|gateway_technical_error|2|2": [
+   12,
+   16
+  ],
+  "retry_to_upi|gateway_technical_error|3": [
+   1,
+   1
+  ],
+  "retry_to_upi|gateway_technical_error|3|1": [
+   1,
+   1
+  ],
+  "retry_to_upi|insufficient_funds": [
+   88,
+   1314
+  ],
+  "retry_to_upi|insufficient_funds|0": [
+   56,
+   554
+  ],
+  "retry_to_upi|insufficient_funds|0|0": [
+   33,
+   179
+  ],
+  "retry_to_upi|insufficient_funds|0|1": [
+   16,
+   126
+  ],
+  "retry_to_upi|insufficient_funds|0|2": [
+   7,
+   249
+  ],
+  "retry_to_upi|insufficient_funds|1": [
+   13,
+   238
+  ],
+  "retry_to_upi|insufficient_funds|1|0": [
+   6,
+   26
+  ],
+  "retry_to_upi|insufficient_funds|1|1": [
+   5,
+   28
+  ],
+  "retry_to_upi|insufficient_funds|1|2": [
+   2,
+   184
+  ],
+  "retry_to_upi|insufficient_funds|2": [
+   17,
+   464
+  ],
+  "retry_to_upi|insufficient_funds|2|0": [
+   4,
+   28
+  ],
+  "retry_to_upi|insufficient_funds|2|1": [
+   6,
+   40
+  ],
+  "retry_to_upi|insufficient_funds|2|2": [
+   7,
+   396
+  ],
+  "retry_to_upi|insufficient_funds|3": [
+   2,
+   58
+  ],
+  "retry_to_upi|insufficient_funds|3|1": [
+   0,
+   1
+  ],
+  "retry_to_upi|insufficient_funds|3|2": [
+   2,
+   57
+  ],
+  "retry_to_upi|invalid_card": [
+   193,
+   426
+  ],
+  "retry_to_upi|invalid_card|0": [
+   133,
+   263
+  ],
+  "retry_to_upi|invalid_card|0|0": [
+   92,
+   132
+  ],
+  "retry_to_upi|invalid_card|0|1": [
+   26,
+   54
+  ],
+  "retry_to_upi|invalid_card|0|2": [
+   15,
+   77
+  ],
+  "retry_to_upi|invalid_card|1": [
+   19,
+   54
+  ],
+  "retry_to_upi|invalid_card|1|0": [
+   7,
+   14
+  ],
+  "retry_to_upi|invalid_card|1|1": [
+   7,
+   11
+  ],
+  "retry_to_upi|invalid_card|1|2": [
+   5,
+   29
+  ],
+  "retry_to_upi|invalid_card|2": [
+   37,
+   103
+  ],
+  "retry_to_upi|invalid_card|2|0": [
+   12,
+   17
+  ],
+  "retry_to_upi|invalid_card|2|1": [
+   9,
+   12
+  ],
+  "retry_to_upi|invalid_card|2|2": [
+   16,
+   74
+  ],
+  "retry_to_upi|invalid_card|3": [
+   4,
+   6
+  ],
+  "retry_to_upi|invalid_card|3|0": [
+   1,
+   1
+  ],
+  "retry_to_upi|invalid_card|3|2": [
+   3,
+   5
+  ],
+  "retry_to_upi|limit_exceeded": [
+   116,
+   457
+  ],
+  "retry_to_upi|limit_exceeded|0": [
+   75,
+   215
+  ],
+  "retry_to_upi|limit_exceeded|0|0": [
+   47,
+   89
+  ],
+  "retry_to_upi|limit_exceeded|0|1": [
+   17,
+   48
+  ],
+  "retry_to_upi|limit_exceeded|0|2": [
+   11,
+   78
+  ],
+  "retry_to_upi|limit_exceeded|1": [
+   11,
+   50
+  ],
+  "retry_to_upi|limit_exceeded|1|0": [
+   6,
+   8
+  ],
+  "retry_to_upi|limit_exceeded|1|1": [
+   4,
+   12
+  ],
+  "retry_to_upi|limit_exceeded|1|2": [
+   1,
+   30
+  ],
+  "retry_to_upi|limit_exceeded|2": [
+   27,
+   169
+  ],
+  "retry_to_upi|limit_exceeded|2|0": [
+   10,
+   21
+  ],
+  "retry_to_upi|limit_exceeded|2|1": [
+   2,
+   11
+  ],
+  "retry_to_upi|limit_exceeded|2|2": [
+   15,
+   137
+  ],
+  "retry_to_upi|limit_exceeded|3": [
+   3,
+   23
+  ],
+  "retry_to_upi|limit_exceeded|3|1": [
+   0,
+   1
+  ],
+  "retry_to_upi|limit_exceeded|3|2": [
+   3,
+   22
+  ],
+  "retry_to_upi|mandate_expired": [
+   155,
+   177
+  ],
+  "retry_to_upi|mandate_expired|0": [
+   98,
+   114
+  ],
+  "retry_to_upi|mandate_expired|0|0": [
+   63,
+   72
+  ],
+  "retry_to_upi|mandate_expired|0|1": [
+   22,
+   25
+  ],
+  "retry_to_upi|mandate_expired|0|2": [
+   13,
+   17
+  ],
+  "retry_to_upi|mandate_expired|1": [
+   21,
+   22
+  ],
+  "retry_to_upi|mandate_expired|1|0": [
+   9,
+   10
+  ],
+  "retry_to_upi|mandate_expired|1|1": [
+   9,
+   9
+  ],
+  "retry_to_upi|mandate_expired|1|2": [
+   3,
+   3
+  ],
+  "retry_to_upi|mandate_expired|2": [
+   35,
+   40
+  ],
+  "retry_to_upi|mandate_expired|2|0": [
+   15,
+   17
+  ],
+  "retry_to_upi|mandate_expired|2|1": [
+   4,
+   4
+  ],
+  "retry_to_upi|mandate_expired|2|2": [
+   16,
+   19
+  ],
+  "retry_to_upi|mandate_expired|3": [
+   1,
+   1
+  ],
+  "retry_to_upi|mandate_expired|3|2": [
+   1,
+   1
+  ],
+  "retry_to_upi|network_error": [
+   95,
+   165
+  ],
+  "retry_to_upi|network_error|0": [
+   63,
+   131
+  ],
+  "retry_to_upi|network_error|0|0": [
+   56,
+   87
+  ],
+  "retry_to_upi|network_error|0|1": [
+   2,
+   16
+  ],
+  "retry_to_upi|network_error|0|2": [
+   5,
+   28
+  ],
+  "retry_to_upi|network_error|1": [
+   9,
+   10
+  ],
+  "retry_to_upi|network_error|1|0": [
+   5,
+   5
+  ],
+  "retry_to_upi|network_error|1|1": [
+   3,
+   3
+  ],
+  "retry_to_upi|network_error|1|2": [
+   1,
+   2
+  ],
+  "retry_to_upi|network_error|2": [
+   23,
+   24
+  ],
+  "retry_to_upi|network_error|2|0": [
+   11,
+   11
+  ],
+  "retry_to_upi|network_error|2|1": [
+   7,
+   7
+  ],
+  "retry_to_upi|network_error|2|2": [
+   5,
+   6
+  ],
+  "retry_to_upi|other": [
+   138,
+   544
+  ],
+  "retry_to_upi|other|0": [
+   97,
+   272
+  ],
+  "retry_to_upi|other|0|0": [
+   79,
+   136
+  ],
+  "retry_to_upi|other|0|1": [
+   10,
+   47
+  ],
+  "retry_to_upi|other|0|2": [
+   8,
+   89
+  ],
+  "retry_to_upi|other|1": [
+   12,
+   75
+  ],
+  "retry_to_upi|other|1|0": [
+   5,
+   12
+  ],
+  "retry_to_upi|other|1|1": [
+   3,
+   13
+  ],
+  "retry_to_upi|other|1|2": [
+   4,
+   50
+  ],
+  "retry_to_upi|other|2": [
+   27,
+   172
+  ],
+  "retry_to_upi|other|2|0": [
+   14,
+   23
+  ],
+  "retry_to_upi|other|2|1": [
+   7,
+   21
+  ],
+  "retry_to_upi|other|2|2": [
+   6,
+   128
+  ],
+  "retry_to_upi|other|3": [
+   2,
+   25
+  ],
+  "retry_to_upi|other|3|0": [
+   1,
+   1
+  ],
+  "retry_to_upi|other|3|2": [
+   1,
+   24
+  ],
+  "retry_to_upi|payment_cancelled": [
+   202,
+   533
+  ],
+  "retry_to_upi|payment_cancelled|0": [
+   161,
+   328
+  ],
+  "retry_to_upi|payment_cancelled|0|0": [
+   156,
+   221
+  ],
+  "retry_to_upi|payment_cancelled|0|1": [
+   3,
+   31
+  ],
+  "retry_to_upi|payment_cancelled|0|2": [
+   2,
+   76
+  ],
+  "retry_to_upi|payment_cancelled|1": [
+   15,
+   70
+  ],
+  "retry_to_upi|payment_cancelled|1|0": [
+   14,
+   18
+  ],
+  "retry_to_upi|payment_cancelled|1|1": [
+   1,
+   9
+  ],
+  "retry_to_upi|payment_cancelled|1|2": [
+   0,
+   43
+  ],
+  "retry_to_upi|payment_cancelled|2": [
+   24,
+   120
+  ],
+  "retry_to_upi|payment_cancelled|2|0": [
+   15,
+   20
+  ],
+  "retry_to_upi|payment_cancelled|2|1": [
+   3,
+   9
+  ],
+  "retry_to_upi|payment_cancelled|2|2": [
+   6,
+   91
+  ],
+  "retry_to_upi|payment_cancelled|3": [
+   2,
+   15
+  ],
+  "retry_to_upi|payment_cancelled|3|2": [
+   2,
+   15
+  ],
+  "retry_to_upi|payment_failed": [
+   487,
+   1280
+  ],
+  "retry_to_upi|payment_failed|0": [
+   347,
+   758
+  ],
+  "retry_to_upi|payment_failed|0|0": [
+   266,
+   416
+  ],
+  "retry_to_upi|payment_failed|0|1": [
+   46,
+   132
+  ],
+  "retry_to_upi|payment_failed|0|2": [
+   35,
+   210
+  ],
+  "retry_to_upi|payment_failed|1": [
+   60,
+   170
+  ],
+  "retry_to_upi|payment_failed|1|0": [
+   29,
+   41
+  ],
+  "retry_to_upi|payment_failed|1|1": [
+   11,
+   27
+  ],
+  "retry_to_upi|payment_failed|1|2": [
+   20,
+   102
+  ],
+  "retry_to_upi|payment_failed|2": [
+   79,
+   326
+  ],
+  "retry_to_upi|payment_failed|2|0": [
+   35,
+   48
+  ],
+  "retry_to_upi|payment_failed|2|1": [
+   14,
+   36
+  ],
+  "retry_to_upi|payment_failed|2|2": [
+   30,
+   242
+  ],
+  "retry_to_upi|payment_failed|3": [
+   1,
+   26
+  ],
+  "retry_to_upi|payment_failed|3|0": [
+   0,
+   1
+  ],
+  "retry_to_upi|payment_failed|3|2": [
+   1,
+   25
+  ],
+  "retry_to_upi|timeout": [
+   276,
+   406
+  ],
+  "retry_to_upi|timeout|0": [
+   222,
+   346
+  ],
+  "retry_to_upi|timeout|0|0": [
+   197,
+   257
+  ],
+  "retry_to_upi|timeout|0|1": [
+   17,
+   49
+  ],
+  "retry_to_upi|timeout|0|2": [
+   8,
+   40
+  ],
+  "retry_to_upi|timeout|1": [
+   26,
+   28
+  ],
+  "retry_to_upi|timeout|1|0": [
+   15,
+   17
+  ],
+  "retry_to_upi|timeout|1|1": [
+   8,
+   8
+  ],
+  "retry_to_upi|timeout|1|2": [
+   3,
+   3
+  ],
+  "retry_to_upi|timeout|2": [
+   28,
+   32
+  ],
+  "retry_to_upi|timeout|2|0": [
+   17,
+   20
+  ],
+  "retry_to_upi|timeout|2|1": [
+   4,
+   5
+  ],
+  "retry_to_upi|timeout|2|2": [
+   7,
+   7
+  ],
+  "retry_to_upi|upi_psp_error": [
+   92,
+   189
+  ],
+  "retry_to_upi|upi_psp_error|0": [
+   58,
+   153
+  ],
+  "retry_to_upi|upi_psp_error|0|0": [
+   39,
+   84
+  ],
+  "retry_to_upi|upi_psp_error|0|1": [
+   14,
+   33
+  ],
+  "retry_to_upi|upi_psp_error|0|2": [
+   5,
+   36
+  ],
+  "retry_to_upi|upi_psp_error|1": [
+   16,
+   16
+  ],
+  "retry_to_upi|upi_psp_error|1|0": [
+   9,
+   9
+  ],
+  "retry_to_upi|upi_psp_error|1|1": [
+   5,
+   5
+  ],
+  "retry_to_upi|upi_psp_error|1|2": [
+   2,
+   2
+  ],
+  "retry_to_upi|upi_psp_error|2": [
+   18,
+   20
+  ],
+  "retry_to_upi|upi_psp_error|2|0": [
+   9,
+   10
+  ],
+  "retry_to_upi|upi_psp_error|2|1": [
+   1,
+   1
+  ],
+  "retry_to_upi|upi_psp_error|2|2": [
+   8,
+   9
+  ],
+  "retry_to_wallet": [
+   902,
+   1337
+  ],
+  "retry_to_wallet|authentication_failed": [
+   45,
+   148
+  ],
+  "retry_to_wallet|authentication_failed|0": [
+   37,
+   90
+  ],
+  "retry_to_wallet|authentication_failed|0|0": [
+   34,
+   46
+  ],
+  "retry_to_wallet|authentication_failed|0|1": [
+   1,
+   15
+  ],
+  "retry_to_wallet|authentication_failed|0|2": [
+   2,
+   29
+  ],
+  "retry_to_wallet|authentication_failed|1": [
+   3,
+   14
+  ],
+  "retry_to_wallet|authentication_failed|1|0": [
+   1,
+   4
+  ],
+  "retry_to_wallet|authentication_failed|1|2": [
+   2,
+   10
+  ],
+  "retry_to_wallet|authentication_failed|2": [
+   5,
+   40
+  ],
+  "retry_to_wallet|authentication_failed|2|0": [
+   3,
+   5
+  ],
+  "retry_to_wallet|authentication_failed|2|1": [
+   1,
+   7
+  ],
+  "retry_to_wallet|authentication_failed|2|2": [
+   1,
+   28
+  ],
+  "retry_to_wallet|authentication_failed|3": [
+   0,
+   4
+  ],
+  "retry_to_wallet|authentication_failed|3|2": [
+   0,
+   4
+  ],
+  "retry_to_wallet|bank_not_enabled": [
+   19,
+   27
+  ],
+  "retry_to_wallet|bank_not_enabled|0": [
+   17,
+   22
+  ],
+  "retry_to_wallet|bank_not_enabled|0|0": [
+   11,
+   13
+  ],
+  "retry_to_wallet|bank_not_enabled|0|1": [
+   3,
+   4
+  ],
+  "retry_to_wallet|bank_not_enabled|0|2": [
+   3,
+   5
+  ],
+  "retry_to_wallet|bank_not_enabled|1": [
+   1,
+   4
+  ],
+  "retry_to_wallet|bank_not_enabled|1|0": [
+   1,
+   1
+  ],
+  "retry_to_wallet|bank_not_enabled|1|2": [
+   0,
+   3
+  ],
+  "retry_to_wallet|bank_not_enabled|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|bank_not_enabled|2|1": [
+   1,
+   1
+  ],
+  "retry_to_wallet|card_blocked": [
+   33,
+   41
+  ],
+  "retry_to_wallet|card_blocked|0": [
+   27,
+   29
+  ],
+  "retry_to_wallet|card_blocked|0|0": [
+   18,
+   20
+  ],
+  "retry_to_wallet|card_blocked|0|1": [
+   7,
+   7
+  ],
+  "retry_to_wallet|card_blocked|0|2": [
+   2,
+   2
+  ],
+  "retry_to_wallet|card_blocked|1": [
+   4,
+   6
+  ],
+  "retry_to_wallet|card_blocked|1|0": [
+   3,
+   4
+  ],
+  "retry_to_wallet|card_blocked|1|1": [
+   1,
+   2
+  ],
+  "retry_to_wallet|card_blocked|2": [
+   2,
+   6
+  ],
+  "retry_to_wallet|card_blocked|2|0": [
+   1,
+   1
+  ],
+  "retry_to_wallet|card_blocked|2|2": [
+   1,
+   5
+  ],
+  "retry_to_wallet|gateway_technical_error": [
+   40,
+   93
+  ],
+  "retry_to_wallet|gateway_technical_error|0": [
+   29,
+   81
+  ],
+  "retry_to_wallet|gateway_technical_error|0|0": [
+   20,
+   44
+  ],
+  "retry_to_wallet|gateway_technical_error|0|1": [
+   5,
+   16
+  ],
+  "retry_to_wallet|gateway_technical_error|0|2": [
+   4,
+   21
+  ],
+  "retry_to_wallet|gateway_technical_error|1": [
+   5,
+   6
+  ],
+  "retry_to_wallet|gateway_technical_error|1|0": [
+   1,
+   2
+  ],
+  "retry_to_wallet|gateway_technical_error|1|1": [
+   2,
+   2
+  ],
+  "retry_to_wallet|gateway_technical_error|1|2": [
+   2,
+   2
+  ],
+  "retry_to_wallet|gateway_technical_error|2": [
+   6,
+   6
+  ],
+  "retry_to_wallet|gateway_technical_error|2|0": [
+   3,
+   3
+  ],
+  "retry_to_wallet|gateway_technical_error|2|1": [
+   2,
+   2
+  ],
+  "retry_to_wallet|gateway_technical_error|2|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|insufficient_funds": [
+   178,
+   187
+  ],
+  "retry_to_wallet|insufficient_funds|0": [
+   112,
+   116
+  ],
+  "retry_to_wallet|insufficient_funds|0|0": [
+   58,
+   60
+  ],
+  "retry_to_wallet|insufficient_funds|0|1": [
+   29,
+   29
+  ],
+  "retry_to_wallet|insufficient_funds|0|2": [
+   25,
+   27
+  ],
+  "retry_to_wallet|insufficient_funds|1": [
+   24,
+   27
+  ],
+  "retry_to_wallet|insufficient_funds|1|0": [
+   5,
+   6
+  ],
+  "retry_to_wallet|insufficient_funds|1|1": [
+   6,
+   6
+  ],
+  "retry_to_wallet|insufficient_funds|1|2": [
+   13,
+   15
+  ],
+  "retry_to_wallet|insufficient_funds|2": [
+   40,
+   42
+  ],
+  "retry_to_wallet|insufficient_funds|2|0": [
+   8,
+   8
+  ],
+  "retry_to_wallet|insufficient_funds|2|1": [
+   5,
+   5
+  ],
+  "retry_to_wallet|insufficient_funds|2|2": [
+   27,
+   29
+  ],
+  "retry_to_wallet|insufficient_funds|3": [
+   2,
+   2
+  ],
+  "retry_to_wallet|insufficient_funds|3|2": [
+   2,
+   2
+  ],
+  "retry_to_wallet|invalid_card": [
+   38,
+   76
+  ],
+  "retry_to_wallet|invalid_card|0": [
+   25,
+   45
+  ],
+  "retry_to_wallet|invalid_card|0|0": [
+   18,
+   27
+  ],
+  "retry_to_wallet|invalid_card|0|1": [
+   6,
+   11
+  ],
+  "retry_to_wallet|invalid_card|0|2": [
+   1,
+   7
+  ],
+  "retry_to_wallet|invalid_card|1": [
+   6,
+   15
+  ],
+  "retry_to_wallet|invalid_card|1|0": [
+   2,
+   2
+  ],
+  "retry_to_wallet|invalid_card|1|1": [
+   3,
+   5
+  ],
+  "retry_to_wallet|invalid_card|1|2": [
+   1,
+   8
+  ],
+  "retry_to_wallet|invalid_card|2": [
+   6,
+   14
+  ],
+  "retry_to_wallet|invalid_card|2|0": [
+   4,
+   5
+  ],
+  "retry_to_wallet|invalid_card|2|2": [
+   2,
+   9
+  ],
+  "retry_to_wallet|invalid_card|3": [
+   1,
+   2
+  ],
+  "retry_to_wallet|invalid_card|3|2": [
+   1,
+   2
+  ],
+  "retry_to_wallet|limit_exceeded": [
+   56,
+   59
+  ],
+  "retry_to_wallet|limit_exceeded|0": [
+   41,
+   43
+  ],
+  "retry_to_wallet|limit_exceeded|0|0": [
+   22,
+   22
+  ],
+  "retry_to_wallet|limit_exceeded|0|1": [
+   10,
+   12
+  ],
+  "retry_to_wallet|limit_exceeded|0|2": [
+   9,
+   9
+  ],
+  "retry_to_wallet|limit_exceeded|1": [
+   7,
+   8
+  ],
+  "retry_to_wallet|limit_exceeded|1|0": [
+   2,
+   2
+  ],
+  "retry_to_wallet|limit_exceeded|1|1": [
+   1,
+   1
+  ],
+  "retry_to_wallet|limit_exceeded|1|2": [
+   4,
+   5
+  ],
+  "retry_to_wallet|limit_exceeded|2": [
+   8,
+   8
+  ],
+  "retry_to_wallet|limit_exceeded|2|0": [
+   4,
+   4
+  ],
+  "retry_to_wallet|limit_exceeded|2|1": [
+   2,
+   2
+  ],
+  "retry_to_wallet|limit_exceeded|2|2": [
+   2,
+   2
+  ],
+  "retry_to_wallet|mandate_expired": [
+   26,
+   30
+  ],
+  "retry_to_wallet|mandate_expired|0": [
+   18,
+   22
+  ],
+  "retry_to_wallet|mandate_expired|0|0": [
+   13,
+   16
+  ],
+  "retry_to_wallet|mandate_expired|0|1": [
+   4,
+   5
+  ],
+  "retry_to_wallet|mandate_expired|0|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|mandate_expired|1": [
+   4,
+   4
+  ],
+  "retry_to_wallet|mandate_expired|1|0": [
+   2,
+   2
+  ],
+  "retry_to_wallet|mandate_expired|1|1": [
+   1,
+   1
+  ],
+  "retry_to_wallet|mandate_expired|1|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|mandate_expired|2": [
+   4,
+   4
+  ],
+  "retry_to_wallet|mandate_expired|2|0": [
+   2,
+   2
+  ],
+  "retry_to_wallet|mandate_expired|2|1": [
+   2,
+   2
+  ],
+  "retry_to_wallet|network_error": [
+   28,
+   40
+  ],
+  "retry_to_wallet|network_error|0": [
+   24,
+   34
+  ],
+  "retry_to_wallet|network_error|0|0": [
+   21,
+   27
+  ],
+  "retry_to_wallet|network_error|0|1": [
+   2,
+   3
+  ],
+  "retry_to_wallet|network_error|0|2": [
+   1,
+   4
+  ],
+  "retry_to_wallet|network_error|1": [
+   1,
+   1
+  ],
+  "retry_to_wallet|network_error|1|0": [
+   1,
+   1
+  ],
+  "retry_to_wallet|network_error|2": [
+   3,
+   5
+  ],
+  "retry_to_wallet|network_error|2|0": [
+   1,
+   1
+  ],
+  "retry_to_wallet|network_error|2|1": [
+   0,
+   2
+  ],
+  "retry_to_wallet|network_error|2|2": [
+   2,
+   2
+  ],
+  "retry_to_wallet|other": [
+   63,
+   88
+  ],
+  "retry_to_wallet|other|0": [
+   39,
+   52
+  ],
+  "retry_to_wallet|other|0|0": [
+   29,
+   33
+  ],
+  "retry_to_wallet|other|0|1": [
+   7,
+   9
+  ],
+  "retry_to_wallet|other|0|2": [
+   3,
+   10
+  ],
+  "retry_to_wallet|other|1": [
+   7,
+   8
+  ],
+  "retry_to_wallet|other|1|0": [
+   1,
+   1
+  ],
+  "retry_to_wallet|other|1|1": [
+   3,
+   3
+  ],
+  "retry_to_wallet|other|1|2": [
+   3,
+   4
+  ],
+  "retry_to_wallet|other|2": [
+   17,
+   28
+  ],
+  "retry_to_wallet|other|2|0": [
+   7,
+   7
+  ],
+  "retry_to_wallet|other|2|1": [
+   3,
+   3
+  ],
+  "retry_to_wallet|other|2|2": [
+   7,
+   18
+  ],
+  "retry_to_wallet|payment_cancelled": [
+   80,
+   112
+  ],
+  "retry_to_wallet|payment_cancelled|0": [
+   60,
+   79
+  ],
+  "retry_to_wallet|payment_cancelled|0|0": [
+   50,
+   58
+  ],
+  "retry_to_wallet|payment_cancelled|0|1": [
+   7,
+   12
+  ],
+  "retry_to_wallet|payment_cancelled|0|2": [
+   3,
+   9
+  ],
+  "retry_to_wallet|payment_cancelled|1": [
+   8,
+   14
+  ],
+  "retry_to_wallet|payment_cancelled|1|0": [
+   5,
+   6
+  ],
+  "retry_to_wallet|payment_cancelled|1|2": [
+   3,
+   8
+  ],
+  "retry_to_wallet|payment_cancelled|2": [
+   12,
+   18
+  ],
+  "retry_to_wallet|payment_cancelled|2|0": [
+   5,
+   5
+  ],
+  "retry_to_wallet|payment_cancelled|2|1": [
+   1,
+   3
+  ],
+  "retry_to_wallet|payment_cancelled|2|2": [
+   6,
+   10
+  ],
+  "retry_to_wallet|payment_cancelled|3": [
+   0,
+   1
+  ],
+  "retry_to_wallet|payment_cancelled|3|2": [
+   0,
+   1
+  ],
+  "retry_to_wallet|payment_failed": [
+   196,
+   275
+  ],
+  "retry_to_wallet|payment_failed|0": [
+   130,
+   183
+  ],
+  "retry_to_wallet|payment_failed|0|0": [
+   99,
+   123
+  ],
+  "retry_to_wallet|payment_failed|0|1": [
+   13,
+   23
+  ],
+  "retry_to_wallet|payment_failed|0|2": [
+   18,
+   37
+  ],
+  "retry_to_wallet|payment_failed|1": [
+   19,
+   29
+  ],
+  "retry_to_wallet|payment_failed|1|0": [
+   11,
+   12
+  ],
+  "retry_to_wallet|payment_failed|1|1": [
+   3,
+   5
+  ],
+  "retry_to_wallet|payment_failed|1|2": [
+   5,
+   12
+  ],
+  "retry_to_wallet|payment_failed|2": [
+   47,
+   62
+  ],
+  "retry_to_wallet|payment_failed|2|0": [
+   16,
+   18
+  ],
+  "retry_to_wallet|payment_failed|2|1": [
+   12,
+   13
+  ],
+  "retry_to_wallet|payment_failed|2|2": [
+   19,
+   31
+  ],
+  "retry_to_wallet|payment_failed|3": [
+   0,
+   1
+  ],
+  "retry_to_wallet|payment_failed|3|2": [
+   0,
+   1
+  ],
+  "retry_to_wallet|timeout": [
+   82,
+   121
+  ],
+  "retry_to_wallet|timeout|0": [
+   66,
+   104
+  ],
+  "retry_to_wallet|timeout|0|0": [
+   54,
+   73
+  ],
+  "retry_to_wallet|timeout|0|1": [
+   9,
+   13
+  ],
+  "retry_to_wallet|timeout|0|2": [
+   3,
+   18
+  ],
+  "retry_to_wallet|timeout|1": [
+   6,
+   7
+  ],
+  "retry_to_wallet|timeout|1|0": [
+   5,
+   6
+  ],
+  "retry_to_wallet|timeout|1|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|timeout|2": [
+   10,
+   10
+  ],
+  "retry_to_wallet|timeout|2|0": [
+   9,
+   9
+  ],
+  "retry_to_wallet|timeout|2|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|upi_psp_error": [
+   18,
+   40
+  ],
+  "retry_to_wallet|upi_psp_error|0": [
+   15,
+   37
+  ],
+  "retry_to_wallet|upi_psp_error|0|0": [
+   7,
+   21
+  ],
+  "retry_to_wallet|upi_psp_error|0|1": [
+   6,
+   12
+  ],
+  "retry_to_wallet|upi_psp_error|0|2": [
+   2,
+   4
+  ],
+  "retry_to_wallet|upi_psp_error|1": [
+   1,
+   1
+  ],
+  "retry_to_wallet|upi_psp_error|1|2": [
+   1,
+   1
+  ],
+  "retry_to_wallet|upi_psp_error|2": [
+   2,
+   2
+  ],
+  "retry_to_wallet|upi_psp_error|2|0": [
+   2,
+   2
+  ]
+ },
+ "channel_lift": {
+  "email": 0.5564,
+  "sms": 0.7122,
+  "whatsapp": 1.0085
+ },
+ "tone_lift": {
+  "friendly": 0.7956,
+  "hinglish": 0.7759,
+  "informational": 0.7554,
+  "urgent": 0.7144
+ },
+ "health_factor": {
+  "*|0": 0.9259,
+  "*|1": 1.0596,
+  "*|2": 1.0737,
+  "authentication_failed|0": 1.3158,
+  "authentication_failed|1": 0.9648,
+  "authentication_failed|2": 0.9954,
+  "bank_not_enabled|0": 0.7553,
+  "bank_not_enabled|1": 1.0523,
+  "bank_not_enabled|2": 1.0646,
+  "card_blocked|0": 1.4675,
+  "card_blocked|1": 1.0075,
+  "card_blocked|2": 0.9736,
+  "gateway_technical_error|0": 0.5625,
+  "gateway_technical_error|1": 0.8209,
+  "gateway_technical_error|2": 1.3194,
+  "insufficient_funds|0": 0.83,
+  "insufficient_funds|1": 0.8509,
+  "insufficient_funds|2": 1.0236,
+  "invalid_card|0": 1.045,
+  "invalid_card|1": 1.1739,
+  "invalid_card|2": 0.9689,
+  "limit_exceeded|0": 2.0393,
+  "limit_exceeded|1": 1.7614,
+  "limit_exceeded|2": 0.8621,
+  "mandate_expired|0": 0.7871,
+  "mandate_expired|1": 0.9621,
+  "mandate_expired|2": 1.0242,
+  "network_error|0": 0.4442,
+  "network_error|1": 0.7779,
+  "network_error|2": 1.3339,
+  "other|0": 1.0021,
+  "other|1": 1.4185,
+  "other|2": 0.9435,
+  "payment_cancelled|0": 1.1473,
+  "payment_cancelled|1": 1.3768,
+  "payment_cancelled|2": 0.9401,
+  "payment_failed|0": 1.0254,
+  "payment_failed|1": 1.1781,
+  "payment_failed|2": 0.9648,
+  "timeout|0": 0.5218,
+  "timeout|1": 0.8623,
+  "timeout|2": 1.1987,
+  "upi_psp_error|0": 0.6377,
+  "upi_psp_error|1": 0.7651,
+  "upi_psp_error|2": 1.3803
+ },
+ "health_transition": {
+  "0|0|0": 0.9114,
+  "0|0|1": 0.0668,
+  "0|0|2": 0.0218,
+  "0|1|0": 0.0243,
+  "0|1|1": 0.0469,
+  "0|1|2": 0.9288,
+  "0|2|0": 0.0118,
+  "0|2|1": 0.0295,
+  "0|2|2": 0.9587,
+  "1|0|0": 0.0637,
+  "1|0|1": 0.8345,
+  "1|0|2": 0.1017,
+  "1|1|0": 0.0162,
+  "1|1|1": 0.0575,
+  "1|1|2": 0.9262,
+  "1|2|0": 0.0107,
+  "1|2|1": 0.0329,
+  "1|2|2": 0.9564,
+  "2|0|0": 0.0026,
+  "2|0|1": 0.019,
+  "2|0|2": 0.9784,
+  "2|1|0": 0.0118,
+  "2|1|1": 0.0354,
+  "2|1|2": 0.9528,
+  "2|2|0": 0.009,
+  "2|2|1": 0.0291,
+  "2|2|2": 0.9619
+ },
+ "quiet_lift": 0.2173,
+ "attempt_decay": 0.4012,
+ "fitted_on": {
+  "seeds": [
+   1001,
+   1002,
+   1003,
+   1004,
+   1005,
+   1006,
+   1007,
+   1008,
+   1009,
+   1010,
+   1011,
+   1012,
+   1013,
+   1014,
+   1015,
+   1016,
+   1017,
+   1018,
+   1019,
+   1020,
+   1021,
+   1022,
+   1023,
+   1024,
+   1025,
+   1026,
+   1027,
+   1028,
+   1029,
+   1030
+  ],
+  "scenarios": [
+   "baseline",
+   "festival_spike",
+   "outage_day",
+   "salary_week",
+   "stress_dead_instruments"
+  ],
+  "loggers": [
+   "probe",
+   "rules"
+  ],
+  "episodes": 117600,
+  "probe_episodes": 58800,
+  "link_open_rate_overall": 0.0491,
+  "retry_rate_standardised_probe_only": 0.2723,
+  "health_readings_probe_only": 4915322
+ }
+}
