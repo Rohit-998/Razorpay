@@ -65,8 +65,29 @@ CHANNEL_COST_PAISE: dict[Channel, int] = {
     Channel.WHATSAPP: 38,
 }
 
-ESCALATION_COST_PAISE = 3_500
-"""Loaded cost of a human agent touching one payment (~₹35)."""
+ESCALATION_COST_PAISE = 9_000
+"""Fully loaded cost of a human agent working one payment (~₹90).
+
+Not just the talk time. An outbound recovery contact in India takes two to three
+dials to get one connect, six to eight minutes of agent time on the call, plus
+wrap-up, dialler and supervision overhead. At a loaded agent cost of roughly
+₹300/hour that lands near ₹90 per payment attempted — and it is charged whether
+or not anyone picks up, because the cost is the attempt, not the outcome."""
+
+AGENT_CONNECT_FLOOR = 0.22
+AGENT_CONNECT_INTENT_WEIGHT = 0.40
+AGENT_CONNECT_CEILING = 0.70
+"""Chance the agent actually reaches the customer: `floor + weight × intent`,
+capped. Outbound connect rates on Indian mobile numbers sit in the 25–45% band
+even for warm lists, and someone who has already lost interest is the least
+likely to answer an unknown number."""
+
+AGENT_COMPLETION_FLOOR = 0.40
+AGENT_COMPLETION_INTENT_WEIGHT = 0.50
+AGENT_COMPLETION_CEILING = 0.90
+"""Chance a customer who *is* reached, on a rail that *can* authorise, actually
+pays on the call. The rest say 'not now' and mean it. Without this gate a
+connect converts almost perfectly and the agent becomes a magic wand."""
 
 AMBIGUITY_WINDOW_HOURS = 6.0
 """If a customer pays through their own channel within this long after we
@@ -212,6 +233,11 @@ class RecoveryEnv:
             downtime_multiplier=scenario.downtime_multiplier,
         )
         self.episodes: list[Episode] = []
+        self.agent_capacity: int = scenario.agent_capacity
+        self.agent_calls_used: int = 0
+        """Batch-level, not episode-level, and that is the point: the agent bench is
+        shared, so an escalation spent on payment 12 is one that payment 300 cannot
+        have. It makes escalation an allocation problem instead of a free upgrade."""
 
     # ── Batch construction ───────────────────────────────────────────────
 
@@ -269,6 +295,7 @@ class RecoveryEnv:
         episodes.sort(key=lambda e: e.failed_at)
         self.world.register_failures([(e.bank, e.failed_at) for e in episodes])
         self.episodes = episodes
+        self.agent_calls_used = 0
         return episodes
 
     def _sample_merchant_error_windows(
@@ -439,9 +466,9 @@ class RecoveryEnv:
 
         Everything here is something a real merchant has: the webhook fields, the
         merchant's own recent failure counts for that bank, aggregate customer
-        history, and whether a token or mandate is on file. Nothing latent
-        crosses this boundary — no true cause, no outage schedule, no
-        `self_recover_at`.
+        history, whether a token or mandate is on file, and how much of the agent
+        bench is still free. Nothing latent crosses this boundary — no true cause,
+        no outage schedule, no `self_recover_at`.
         """
         return Observation(
             payment_id=ep.payment_id,
@@ -472,6 +499,8 @@ class RecoveryEnv:
             ),
             has_mandate=ep.customer.has_mandate,
             available_methods=list(ep.customer.alt_methods),
+            agent_calls_remaining=max(0, self.agent_capacity - self.agent_calls_used),
+            agent_capacity=self.agent_capacity,
             last_action=ep.history[-1].action if ep.history else None,
             last_detail=ep.history[-1].detail if ep.history else "",
         )
@@ -735,18 +764,46 @@ class RecoveryEnv:
         return cost, f"{sent}; customer opens it in ~{delay:.0f}m", False
 
     def _do_escalate(self, ep: Episode, action: Action) -> tuple[int, str, bool]:
-        """Hand to a human agent. Powerful, expensive, and useless against a dead
-        instrument or an empty account — which is what makes it a real decision."""
+        """Hand to a human agent. The strongest action available, and the scarcest.
+
+        Useless against a dead instrument or an empty account, rationed by a fixed
+        bench, and charged whether or not the phone is answered — which together
+        are what make it a real decision instead of a free upgrade.
+        """
         if ep.escalated:
             return 0, "escalation impossible: already handed to an agent", True
+        if self.agent_calls_used >= self.agent_capacity:
+            return 0, (
+                f"escalation refused: the agent bench is full for this batch "
+                f"({self.agent_calls_used}/{self.agent_capacity} calls used)"
+            ), True
 
+        self.agent_calls_used += 1
         ep.escalated = True
         ep.terminal = Terminal.ESCALATED
         cost = ESCALATION_COST_PAISE
 
         intent = ep.customer.intent_at(ep.now, ep.failed_at)
-        if float(ep.rng_agent.random()) >= min(0.95, 0.45 + 0.5 * intent):
-            return cost, "agent could not reach the customer", False
+        # Both draws happen every time so the stream stays aligned whether or not
+        # the agent gets through.
+        connect_roll = float(ep.rng_agent.random())
+        completion_roll = float(ep.rng_agent.random())
+
+        connect = min(
+            AGENT_CONNECT_CEILING, AGENT_CONNECT_FLOOR + AGENT_CONNECT_INTENT_WEIGHT * intent
+        )
+        if connect_roll >= connect:
+            return cost, f"agent could not reach the customer (connect rate {connect:.0%})", False
+
+        completion = min(
+            AGENT_COMPLETION_CEILING,
+            AGENT_COMPLETION_FLOOR + AGENT_COMPLETION_INTENT_WEIGHT * intent,
+        )
+        if completion_roll >= completion:
+            return cost, (
+                "agent reached the customer, who declined to complete the payment now "
+                f"(in-call completion rate {completion:.0%})"
+            ), False
 
         # With the customer on the line an agent can try every rail they hold and
         # re-enter details by hand. They still cannot conjure balance.

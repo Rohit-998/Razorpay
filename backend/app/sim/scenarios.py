@@ -46,9 +46,26 @@ class Scenario:
     merchant_error_windows: int = 2
     """Config breakages are bursty; this many windows get clustered failures."""
 
+    agent_call_share: float = 0.05
+    """Share of the batch a human agent can actually call.
+
+    This is the constraint that makes escalation interesting. Without it the
+    optimal policy is "phone everyone": a ₹90 call against an average basket of
+    several thousand rupees has an absurd expected return, so an unconstrained
+    environment rewards a policy with no judgement in it at all. Real merchants
+    do not have that option — the recovery bench is a handful of people, and it
+    is sized in percent of failed volume, not in payments. At 5% of 400 failed
+    payments the policy gets twenty calls and has to decide which twenty.
+    """
+
     def normalised_weights(self) -> dict[str, float]:
         total = sum(self.cause_weights.values())
         return {k: v / total for k, v in self.cause_weights.items()}
+
+    @property
+    def agent_capacity(self) -> int:
+        """Absolute number of agent calls available for this batch."""
+        return max(1, int(round(self.n_payments * self.agent_call_share)))
 
 
 def _weights(**overrides: float) -> dict[str, float]:

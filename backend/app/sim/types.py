@@ -180,6 +180,17 @@ class Observation:
     """Methods this customer has previously used successfully — so suggesting an
     alternative is grounded rather than a guess."""
 
+    agent_calls_remaining: int = 0
+    """Human agent calls left in the batch's bench for this shift. Shared across
+    every payment, so spending one here means not spending it on the next
+    payment — which is the whole reason escalation is a decision and not a
+    default. A real merchant has a fixed number of agents, and any system that
+    escalates without tracking this is writing cheques the ops team cannot cash."""
+
+    agent_capacity: int = 0
+    """Size of that bench, so a policy can reason about the fraction left rather
+    than an absolute count it has no scale for."""
+
     last_action: Action | None = None
     last_detail: str = ""
 
