@@ -221,6 +221,8 @@ class StepResult:
     """Outcome of one action. `attribution` is scoring-only — policies never see it."""
 
     t: datetime
+    """The clock *after* the action resolved. An escalation takes 25 minutes, so this
+    is not when the action was taken — see `decided_at`."""
     action: Action
     paid: bool
     paid_amount: int
@@ -233,3 +235,16 @@ class StepResult:
     server-side retry with no mandate. Counted and reported — a policy that
     proposes impossible actions is not production-ready."""
     compliance_blocked: list[str] = field(default_factory=list)
+    decided_at: datetime | None = None
+    """When the action was actually taken, before its duration was applied.
+
+    This is the timestamp any rule about *when* we contacted someone has to be
+    judged against. Reading `t` instead charges a message sent legally at 21:59 as
+    a quiet-hours violation, because a link takes a minute to go out — which was a
+    real false positive in the metrics before this field existed.
+    """
+
+    @property
+    def taken_at(self) -> datetime:
+        """`decided_at` when it is known, falling back to the settled clock."""
+        return self.decided_at if self.decided_at is not None else self.t

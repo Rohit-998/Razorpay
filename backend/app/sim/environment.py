@@ -97,6 +97,10 @@ QUIET_HOUR_CLICK_FACTOR = 0.28
 """Messages that land overnight mostly go unread. Not a compliance rule — this is
 the effectiveness penalty that makes quiet-hours guardrails nearly free."""
 
+MAX_CLICK_PROBABILITY = 0.95
+"""Ceiling on click-through however perfect the message. Nobody opens everything,
+and without a cap a high-intent persona on their best channel would be a certainty."""
+
 CARD_BLOCK_PROBABILITY_PER_FAILED_RETRY = 0.06
 """Chance a failed card retry pushes the issuer into blocking the card outright."""
 
@@ -635,6 +639,11 @@ class RecoveryEnv:
             self._close_window(ep)
             return self._record(ep, action, 0, "recovery window has expired", invalid=True)
 
+        # Captured before anything moves the clock. Every rule about *when* we did
+        # something has to be judged against this, not against where the clock ends
+        # up once the action's duration has been applied.
+        decided_at = ep.now
+
         cost, invalid = 0, False
         if action.type is ActionType.WAIT:
             detail = f"waited {max(0, action.wait_minutes)}m"
@@ -661,7 +670,7 @@ class RecoveryEnv:
             detail = "; ".join([detail, *notes])
         if ep.terminal is Terminal.OPEN and ep.now >= ep.deadline:
             self._close_window(ep)
-        return self._record(ep, action, cost, detail, invalid=invalid)
+        return self._record(ep, action, cost, detail, invalid=invalid, decided_at=decided_at)
 
     def _record(
         self,
@@ -671,6 +680,7 @@ class RecoveryEnv:
         detail: str,
         invalid: bool = False,
         blocked: list[str] | None = None,
+        decided_at: datetime | None = None,
     ) -> StepResult:
         result = StepResult(
             t=ep.now,
@@ -683,6 +693,7 @@ class RecoveryEnv:
             detail=detail,
             invalid=invalid,
             compliance_blocked=list(blocked or []),
+            decided_at=decided_at if decided_at is not None else ep.now,
         )
         ep.history.append(result)
         return result
@@ -752,7 +763,7 @@ class RecoveryEnv:
 
         # Both draws happen every time, clicked or not, so two policies sending
         # the same number of messages stay aligned on this stream.
-        opened = float(ep.rng_click.random()) < min(0.95, rate)
+        opened = float(ep.rng_click.random()) < min(MAX_CLICK_PROBABILITY, rate)
         delay = float(np.clip(
             ep.rng_click.lognormal(mean=math.log(22.0), sigma=1.0), 1.0, 2_880.0
         ))

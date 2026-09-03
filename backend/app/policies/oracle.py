@@ -49,6 +49,8 @@ from app.sim.environment import (
     AGENT_CONNECT_FLOOR,
     AGENT_CONNECT_INTENT_WEIGHT,
     ESCALATION_COST_PAISE,
+    MAX_CLICK_PROBABILITY,
+    QUIET_HOUR_CLICK_FACTOR,
     Episode,
     RecoveryEnv,
 )
@@ -60,6 +62,14 @@ MAX_ORACLE_RETRIES = 2
 """Retries cost nothing in rupees but they are not risk-free: each failed one can
 get the card blocked by its issuer, which destroys the link and agent routes too.
 Two is roughly where the free option stops paying for itself."""
+
+DAWN_HOUR = 8
+"""When quiet hours end and messages start getting read again."""
+
+LINK_CLICK_SLACK_MINUTES = 60
+"""A held message is only worth holding if there is still time for someone to open
+it and pay. Below an hour of window left, send now and take the poor read rate."""
+
 
 
 class OraclePolicy(BasePolicy):
@@ -204,6 +214,69 @@ class OraclePolicy(BasePolicy):
         burns a step and the harness would report it as a hung policy."""
         return max(1, int((t - ep.now).total_seconds() / 60.0) + 1)
 
+    @staticmethod
+    def _next_dawn(ep: Episode) -> datetime:
+        """The next 08:00 after `ep.now`, when messages start being read again."""
+        dawn = ep.now.replace(hour=DAWN_HOUR, minute=0, second=0, microsecond=0)
+        return dawn if dawn > ep.now else dawn + timedelta(days=1)
+
+    @staticmethod
+    def _read_probability(ep: Episode, at: datetime, channel: Channel, tone: Tone) -> float:
+        """Chance a message sent at `at` gets opened. Mirrors `_do_send_link`.
+
+        The one factor left out is the environment's 0.25 penalty for offering a rail
+        the customer does not hold, because the oracle only ever offers rails from
+        `alt_methods` and so never incurs it.
+        """
+        rate = ep.customer.channel_rate(channel, tone)
+        rate *= ep.customer.intent_at(at, ep.failed_at)
+        rate *= ep.customer.fatigue_multiplier()
+        if RecoveryEnv._is_quiet_hour(at):
+            rate *= QUIET_HOUR_CLICK_FACTOR
+        return min(MAX_CLICK_PROBABILITY, rate)
+
+    def _plan_value_rupees(self, ep: Episode, at: datetime, rail: PaymentMethod) -> float:
+        """Expected rupees from starting the outreach ladder at `at`.
+
+        Not just the message. If a bench slot is reserved for this payment the agent
+        call happens *after* the message fails, so it inherits the same delay — and
+        both the connect and completion gates lean on intent. Pricing the message
+        alone is what makes a naive hold-until-morning rule lose money: it trades a
+        small gain in read rate for a large loss on the call behind it.
+        """
+        channel, tone = self._best_channel_and_tone(ep)
+        p_click = self._read_probability(ep, at, channel, tone)
+        p_auth = self.env.world.success_probability(ep.bank, at)
+        p_link = p_click * p_auth
+        value = p_link * ep.amount_rupees
+        if ep.payment_id in self._agent_slots:
+            net_call = self._escalation_value_rupees(ep, at) - ESCALATION_COST_RUPEES
+            value += (1.0 - p_link) * max(0.0, net_call)
+        return value
+
+    def _best_send_time(self, ep: Episode, rail: PaymentMethod) -> datetime:
+        """Now, or the morning — whichever the whole remaining plan is worth more at.
+
+        This is not a compliance rule; the oracle has no compliance rules. Overnight
+        messages are read at a fraction of the daytime rate, and intent decays with
+        its own half-life, so which moment wins depends on the customer and on what
+        follows the message. That perfect play ends up respecting quiet hours almost
+        everywhere is a property of the problem rather than a concession to the
+        rulebook — the 3am message was mostly never worth sending.
+        """
+        if not RecoveryEnv._is_quiet_hour(ep.now):
+            return ep.now
+        dawn = self._next_dawn(ep)
+        if dawn + timedelta(minutes=LINK_CLICK_SLACK_MINUTES) > ep.deadline:
+            return ep.now
+        workable = self._earliest_workable(ep, rail, customer_present=True)
+        if workable is None or workable > dawn:
+            return ep.now
+        if self._plan_value_rupees(ep, dawn, rail) <= self._plan_value_rupees(ep, ep.now, rail):
+            return ep.now
+        return dawn
+
+
     # ── The decision ─────────────────────────────────────────────────────
 
     def act(self, obs: Observation) -> Action:
@@ -273,6 +346,17 @@ class OraclePolicy(BasePolicy):
                 reason=f"a link sent now would be opened before {rail.value} works; waiting {minutes}m",
             )
         if obs.contacts_made == 0:
+            send_at = self._best_send_time(ep, rail)
+            if send_at > ep.now:
+                minutes = self._minutes_until(ep, send_at)
+                return Action(
+                    ActionType.WAIT,
+                    wait_minutes=minutes,
+                    reason=(
+                        f"a message at {ep.now:%H:%M} would mostly go unread; holding "
+                        f"{minutes}m for the morning is worth more than the intent it costs"
+                    ),
+                )
             channel, tone = self._best_channel_and_tone(ep)
             return Action(
                 ActionType.SEND_LINK,

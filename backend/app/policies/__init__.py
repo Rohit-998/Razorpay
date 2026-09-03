@@ -18,7 +18,19 @@ from app.policies.baselines import DoNothingPolicy, NaiveRetryPolicy
 from app.policies.oracle import OraclePolicy
 from app.policies.rules import RulesPolicy
 
+LADDER = {
+    "do_nothing": lambda env: DoNothingPolicy(),
+    "naive_retry": lambda env: NaiveRetryPolicy(),
+    "rules": lambda env: RulesPolicy(),
+    "oracle": lambda env: OraclePolicy(env),
+}
+"""The ladder, in reporting order. Built per batch rather than once, because the
+oracle is scored against a specific environment and a learning policy needs a place
+to reset per-batch state. `do_nothing` first and `oracle` last is not cosmetic — the
+harness reads the floor and the ceiling out of this dict by name."""
+
 __all__ = [
+    "LADDER",
     "BasePolicy",
     "DoNothingPolicy",
     "NaiveRetryPolicy",
