@@ -134,6 +134,40 @@ remedy taken and when it will wake, the execution, the observed outcome and its 
 verdict *with the sentence that justifies it*. An attribution is a claim about causation
 made by software; the reviewer needs to see the number of hours it turned on.
 
+## The diagnosis, measured against what it has to beat
+
+An accuracy figure on its own is not a claim about anything. A classifier fed error fields
+that determine their own cause reports 95% and has diagnosed nothing — it inverted a lookup
+table the author wrote. So `app/sim/emission.py` overlaps the emission distributions on
+purpose (`payment_failed` appears under all seven causes; BANK_DOWNTIME and
+NETWORK_TRANSIENT are near-identical on the wire), and the accuracy is reported next to the
+ceiling those fields impose:
+
+| | Accuracy |
+| --- | --- |
+| Predict the most common cause every time (`INSUFFICIENT_FUNDS`) | 22.70% |
+| **Bayes-optimal from the error fields alone** — computed analytically over 179 signatures | **68.38%** |
+| XGBoost given only `error_source`, `error_step`, `error_reason` | 69.22% ± 0.60% |
+| **All 17 features** | **82.80%** (macro F1 0.823) |
+
+The third row is the one that matters: an ablation restricted to the error fields cannot
+beat their Bayes bound, so landing *at* it — 1.4 standard errors above, on a finite test
+set — is what says the fit is sound rather than leaking. The **14.42 points** the full model
+adds come from bank health, customer history and timing, because there is no other input.
+
+16,000 training payments and 6,000 held out, split **by seed** rather than by row: payments
+inside one generated batch share the outage windows and the customers of the rows next to
+them, so an intra-batch cut scores the model on circumstances it was fitted on. Labels are
+the simulator's latent `true_cause` — never `recovery_sessions.root_cause`, which the worker
+overwrites with the model's own prediction. Features are built by the production
+`FeatureExtractor`, not a copy, so there is no train/serve skew to go unnoticed.
+
+Trained on a normal week, scored on weeks it never saw: `outage_day` 78.15%, `salary_week`
+81.65%, `festival_spike` 79.99%, `stress_dead_instruments` 81.40%. The weakest class is
+`NETWORK_TRANSIENT` (F1 0.692), confused mostly with `BANK_DOWNTIME` — exactly the pair
+`emission.py` made separable only by correlated failures, which is the feature having to do
+real work.
+
 ## What is real and what is simulated
 
 Honesty here matters more than the appearance of completeness.
@@ -163,7 +197,7 @@ backend/app/
   api/            FastAPI routes — webhooks, batch, dashboard, model
   audit/          append-only event store
   worker.py       ARQ pipeline: classify → decide → check → act, and honour the remedy
-backend/tests/    229 tests
+backend/tests/    298 tests
 backend/reports/  REPORT.md — regenerated, not written by hand
 frontend/         Next.js 14 dashboard (App Router, plain CSS)
 ```
@@ -187,11 +221,23 @@ The test suite:
 cd backend && python -m pytest tests/ -q
 ```
 
-229 tests, ~3 minutes. They are mostly not unit tests. They assert the properties the
+298 tests, ~3 minutes. They are mostly not unit tests. They assert the properties the
 measurement depends on: that the simulator's outcome never reads the label, that lift never
 exceeds attributed recovery, that the ambiguity window is identical on both sides, that
-`payrevive` takes no action the compliance engine would refuse, and that every remedy the
-engine can recommend has somewhere in the worker to go.
+`payrevive` takes no action the compliance engine would refuse, that every remedy the
+engine can recommend has somewhere in the worker to go, and that the classifier's accuracy
+is measured against the bound it has to beat rather than reported on its own.
+
+The classifier is a separate fit, and it is not optional:
+
+```bash
+cd backend && python -m app.ml.train
+```
+
+A fresh clone has `metrics.json` but no model, and `worker.process_failed_payment` returns
+early without one — no payment gets classified, no strategy gets chosen, and nothing errors.
+Roughly a minute. It writes the model, both encoders and the metrics into
+`app/ml/model_artifacts/`, and prints the four numbers below.
 
 ## Running the live system
 
@@ -211,19 +257,21 @@ cd frontend && npm install && npm run dev
 ```
 
 Then: `POST /api/v1/batch/generate` to create synthetic failures,
-`POST /api/v1/model/train` to fit the classifier, `POST /api/v1/batch/run` to put every
-open session through the real pipeline. Sessions stay `OPEN` until Razorpay reports a
-capture or a paid link — outcomes are observed, never assumed.
+`POST /api/v1/model/train` to fit the classifier if `python -m app.ml.train` has not been run
+(same code path, and the worker silently classifies nothing without a model),
+`POST /api/v1/batch/run` to put every open session through the real pipeline. Sessions stay
+`OPEN` until Razorpay reports a capture or a paid link — outcomes are observed, never
+assumed.
 
 ## Known limitations
 
 Stated plainly, because a reviewer will find them anyway and the ones below are the honest
 edges of the work rather than the things it hides.
 
-- **The classifier is still trained on the old generator, whose labels leak.** The
-  Bayes-optimal accuracy for error-fields-only classification is **65.78%** across 179
-  distinct error signatures; any reported figure above that is measuring leakage, not skill.
-  Retraining against `sim/` data and reporting against that bound is the next task.
+- **The classifier's hardest class is genuinely hard, and stays that way.**
+  `NETWORK_TRANSIENT` and `BANK_DOWNTIME` emit almost the same error fields; separating them
+  rests on one noisy feature, the concurrent-failure spike. F1 0.692 on the former is the
+  honest cost of not letting the simulator's own downtime variable into the feature vector.
 - **The bandit's features are re-extracted at reward time, not stored at decision time.**
   Bank health has moved in between, so a contextual arm is updated against slightly
   different context than it chose under. The fix is storing the feature vector on the
