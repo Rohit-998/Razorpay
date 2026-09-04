@@ -88,6 +88,12 @@ CREATE TABLE customers (
 );
 
 -- Recovery policy settings (single row)
+--
+-- These are a record of the limits, not their source. At runtime the compliance engine
+-- reads them from the environment through `app.config.Settings`, because `evaluate()` is
+-- a pure function and a limit fetched mid-decision would make a verdict depend on when
+-- it was asked. Kept in sync by hand, and worth reading as documentation of what the
+-- deployed engine is enforcing.
 CREATE TABLE recovery_settings (
     id                  INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     max_retries_per_payment     INTEGER DEFAULT 3,
@@ -96,7 +102,12 @@ CREATE TABLE recovery_settings (
     max_contacts_per_day        INTEGER DEFAULT 2,
     quiet_hours_start           INTEGER DEFAULT 22,
     quiet_hours_end             INTEGER DEFAULT 8,
-    max_link_amount_paise       INTEGER DEFAULT 5000000,
+    -- NPCI's ₹1,00,000 P2M ceiling. This replaced a `max_link_amount_paise` column that
+    -- capped every payment link at ₹50,000 regardless of rail — a limit that belonged to
+    -- no network and refused cards that would have gone through. Amount ceilings follow
+    -- the rail, not the kind of message, and cards and netbanking are deliberately absent
+    -- because per-issuer limits are not observable from our side.
+    upi_transaction_ceiling_paise INTEGER DEFAULT 10000000,
     require_action_above_paise  INTEGER DEFAULT 1000000,
     enable_llm_reasoning        BOOLEAN DEFAULT TRUE,
     llm_confidence_threshold    FLOAT DEFAULT 0.7,

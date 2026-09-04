@@ -1,6 +1,6 @@
 # Recovery policy evaluation
 
-500 batch runs · 5 policies × 5 scenarios × 20 seeds · generated 2026-09-04 08:01 UTC
+500 batch runs · 5 policies × 5 scenarios × 20 seeds · generated 2026-09-04 08:43 UTC
 
 ## Measured money recovered
 

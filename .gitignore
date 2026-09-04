@@ -1,7 +1,9 @@
 # Environment
 .env
 .env.local
-.env.example
+# `.env.example` is deliberately NOT ignored — it is the template a reviewer copies,
+# and it holds key names with placeholder values only. Ignoring it meant the README
+# told people to copy a file that was not in the repo.
 
 # Python
 __pycache__/
