@@ -1,0 +1,216 @@
+{
+  "accuracy": 0.828,
+  "macro_f1": 0.8229,
+  "per_class": {
+    "AUTH_TIMEOUT": {
+      "precision": 0.8297,
+      "recall": 0.874,
+      "f1": 0.8513,
+      "support": 1254
+    },
+    "BANK_DOWNTIME": {
+      "precision": 0.814,
+      "recall": 0.8092,
+      "f1": 0.8116,
+      "support": 1190
+    },
+    "INSUFFICIENT_FUNDS": {
+      "precision": 0.8784,
+      "recall": 0.9068,
+      "f1": 0.8923,
+      "support": 1362
+    },
+    "MERCHANT_ERROR": {
+      "precision": 0.918,
+      "recall": 0.7939,
+      "f1": 0.8514,
+      "support": 296
+    },
+    "NETWORK_TRANSIENT": {
+      "precision": 0.7065,
+      "recall": 0.6779,
+      "f1": 0.6919,
+      "support": 863
+    },
+    "PERMANENT_DECLINE": {
+      "precision": 0.8648,
+      "recall": 0.8551,
+      "f1": 0.8599,
+      "support": 621
+    },
+    "WRONG_CREDENTIALS": {
+      "precision": 0.824,
+      "recall": 0.7802,
+      "f1": 0.8015,
+      "support": 414
+    }
+  },
+  "confusion_matrix": [
+    [
+      1096,
+      31,
+      47,
+      3,
+      59,
+      0,
+      18
+    ],
+    [
+      36,
+      963,
+      8,
+      7,
+      176,
+      0,
+      0
+    ],
+    [
+      48,
+      10,
+      1235,
+      6,
+      4,
+      40,
+      19
+    ],
+    [
+      9,
+      38,
+      9,
+      235,
+      4,
+      1,
+      0
+    ],
+    [
+      112,
+      141,
+      23,
+      1,
+      585,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      55,
+      3,
+      0,
+      531,
+      31
+    ],
+    [
+      19,
+      0,
+      29,
+      1,
+      0,
+      42,
+      323
+    ]
+  ],
+  "class_order": [
+    "AUTH_TIMEOUT",
+    "BANK_DOWNTIME",
+    "INSUFFICIENT_FUNDS",
+    "MERCHANT_ERROR",
+    "NETWORK_TRANSIENT",
+    "PERMANENT_DECLINE",
+    "WRONG_CREDENTIALS"
+  ],
+  "train_size": 16000,
+  "test_size": 6000,
+  "reference_points": {
+    "majority_class": "INSUFFICIENT_FUNDS",
+    "majority_class_rate": 0.227,
+    "bayes_optimal_error_fields_only": 0.6838,
+    "bayes_optimal_error_fields_only_uniform_prior": 0.6578,
+    "distinct_error_signatures": 179,
+    "error_fields_only_model": 0.6922,
+    "error_fields_only_standard_error": 0.006
+  },
+  "under_distribution_shift": {
+    "outage_day": {
+      "accuracy": 0.7815,
+      "payments": 4800
+    },
+    "salary_week": {
+      "accuracy": 0.8165,
+      "payments": 5700
+    },
+    "festival_spike": {
+      "accuracy": 0.7999,
+      "payments": 8400
+    },
+    "stress_dead_instruments": {
+      "accuracy": 0.814,
+      "payments": 4500
+    }
+  },
+  "data": {
+    "train_scenario": "baseline",
+    "train_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126,
+      127,
+      128,
+      129,
+      130,
+      131,
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      140
+    ],
+    "test_seeds": [
+      201,
+      202,
+      203,
+      204,
+      205,
+      206,
+      207,
+      208,
+      209,
+      210,
+      211,
+      212,
+      213,
+      214,
+      215
+    ],
+    "split": "by seed, so whole independently generated batches are held out",
+    "labels": "Episode.true_cause from the simulator, never a stored prediction",
+    "features_built_by": "app.cache.feature_store.FeatureExtractor, the serving path"
+  }
+}

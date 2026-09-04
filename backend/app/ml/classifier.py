@@ -20,14 +20,31 @@ MODEL_DIR = Path(__file__).parent / "model_artifacts"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# Categorical feature columns and their known categories
+# Categorical feature columns and their known categories.
+#
+# Every value the gateway can put in these fields needs a code here. `OrdinalEncoder` is
+# configured with `unknown_value=-1`, so anything missing from a list is not an error — it
+# encodes as "unrecognised" and shares that single code with every other unseen value.
+#
+# The lists these replaced were missing `payment_failed` and `limit_exceeded` from the
+# reasons and `payment_authorization` from the steps. Those are not edge cases: in the
+# failures the simulator emits, `payment_failed` is the single most common reason (it appears
+# under all seven causes, which is exactly why it is there) and `payment_authorization` is
+# the most common step. So the three highest-frequency values in the dataset were all being
+# collapsed into one meaningless code, quietly, and the model was left to classify on what
+# remained. `tests/test_classifier.py` now asserts these cover `app.sim.emission`, which is
+# the only place the observable vocabulary is defined.
 CATEGORICAL_FEATURES = {
     "error_source": ["customer", "gateway", "business", "razorpay"],
-    "error_step": ["payment_authentication", "payment_initiation", "payment_capture", "payment_processing"],
+    "error_step": [
+        "payment_initiation", "payment_authentication", "payment_authorization",
+        "payment_processing", "payment_capture",
+    ],
     "error_reason": [
-        "insufficient_funds", "gateway_technical_error", "authentication_failed",
-        "payment_cancelled", "bank_not_enabled", "invalid_card", "card_blocked",
-        "upi_psp_error", "network_error", "timeout", "mandate_expired", "other",
+        "payment_failed", "gateway_technical_error", "network_error", "timeout",
+        "authentication_failed", "payment_cancelled", "insufficient_funds",
+        "card_blocked", "invalid_card", "mandate_expired", "upi_psp_error",
+        "bank_not_enabled", "limit_exceeded", "other",
     ],
     "payment_method": ["upi", "card", "netbanking", "wallet"],
     "amount_bucket": ["micro", "small", "medium", "large", "premium"],
@@ -52,12 +69,17 @@ ALL_FEATURE_NAMES = (
 
 
 class RootCauseClassifier:
-    """
-    XGBoost multi-class classifier for payment failure root causes.
-    
-    - 17 features across 4 categories
-    - SHAP TreeExplainer for per-prediction explanations
-    - <10ms inference time
+    """XGBoost multi-class classifier for payment failure root causes.
+
+    17 features across four families — the payment's own error fields, the timing, the bank's
+    recent health, and the customer's history. Trained by `app.ml.train`, which labels from
+    the simulator's latent cause rather than from anything the model previously wrote, and
+    reports the accuracy against the ceiling available from the error fields alone.
+
+    Every prediction carries a SHAP attribution, and that is where the time goes: the model
+    itself answers in about 0.7ms, the TreeExplainer takes it to roughly 15ms end to end.
+    Worth paying — a root cause with no reason attached cannot be argued with by the ops
+    person it is shown to — but it is 15ms, not the sub-10 this docstring used to claim.
     """
 
     def __init__(self):
@@ -200,18 +222,32 @@ class RootCauseClassifier:
         explanations.sort(key=lambda x: abs(x.shap_value), reverse=True)
         return explanations[:10]  # Top 10 features
 
-    def train(self, X: np.ndarray, y: np.ndarray, feature_names: list[str]) -> dict:
-        """Train the XGBoost model and save artifacts."""
-        # Encode labels
+    def train(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
+    ) -> dict:
+        """Fit on `X_train` and score on `X_test`, then save the artifacts.
+
+        The split is the caller's, not this method's. It used to take one matrix and cut the
+        last 20% off the end, which for simulated data is not a held-out sample of anything:
+        rows within a batch share a world — the same outage windows, the same bank-hours, the
+        same customers — so a cut inside a batch scores the model on payments whose
+        circumstances it was fitted on. `app.ml.train` splits by seed, which puts whole
+        independently generated batches on either side.
+
+        Labels are encoded over the declared `RootCause` set rather than over whatever
+        appeared in `y_train`. A cause missing from a training sample would otherwise shift
+        every class index above it, and the saved encoder would disagree with the one the
+        next run produces.
+        """
         self.label_encoder = LabelEncoder()
-        y_encoded = self.label_encoder.fit_transform(y)
+        self.label_encoder.fit([c.value for c in RootCause])
+        y_train_enc = self.label_encoder.transform(y_train)
+        y_test_enc = self.label_encoder.transform(y_test)
 
-        # Time-series split: first 80% train, last 20% test
-        split_idx = int(len(X) * 0.8)
-        X_train, X_test = X[:split_idx], X[split_idx:]
-        y_train, y_test = y_encoded[:split_idx], y_encoded[split_idx:]
-
-        # Train XGBoost
         n_classes = len(self.label_encoder.classes_)
         self.model = XGBClassifier(
             n_estimators=200,
@@ -221,55 +257,47 @@ class RootCauseClassifier:
             num_class=n_classes,
             eval_metric="mlogloss",
             random_state=42,
-            use_label_encoder=False,
         )
-        self.model.fit(
-            X_train, y_train,
-            eval_set=[(X_test, y_test)],
-            verbose=False,
-        )
+        self.model.fit(X_train, y_train_enc, eval_set=[(X_test, y_test_enc)], verbose=False)
 
-        # Evaluate
         y_pred = self.model.predict(X_test)
-        labels_idx = list(range(len(self.label_encoder.classes_)))
+        labels_idx = list(range(n_classes))
         report = classification_report(
-            y_test, y_pred,
+            y_test_enc, y_pred,
             labels=labels_idx,
             target_names=self.label_encoder.classes_,
             output_dict=True,
             zero_division=0,
         )
-        accuracy = report["accuracy"]
-        macro_f1 = report["macro avg"]["f1-score"]
-        conf_matrix = confusion_matrix(y_test, y_pred, labels=labels_idx).tolist()
+        conf_matrix = confusion_matrix(y_test_enc, y_pred, labels=labels_idx).tolist()
 
-        # Create SHAP explainer
         self.explainer = shap.TreeExplainer(self.model)
         self._loaded = True
 
-        # Save artifacts
         joblib.dump(self.model, MODEL_DIR / "xgb_model_v1.pkl")
         joblib.dump(self.label_encoder, MODEL_DIR / "label_encoder_v1.pkl")
         joblib.dump(self.ordinal_encoder, MODEL_DIR / "ordinal_encoder_v1.pkl")
 
         metrics = {
-            "accuracy": round(accuracy, 4),
-            "macro_f1": round(macro_f1, 4),
+            "accuracy": round(report["accuracy"], 4),
+            "macro_f1": round(report["macro avg"]["f1-score"], 4),
             "per_class": {
                 cls: {
                     "precision": round(report[cls]["precision"], 4),
                     "recall": round(report[cls]["recall"], 4),
                     "f1": round(report[cls]["f1-score"], 4),
-                    "support": report[cls]["support"],
+                    "support": int(report[cls]["support"]),
                 }
                 for cls in self.label_encoder.classes_
             },
             "confusion_matrix": conf_matrix,
-            "train_size": len(X_train),
-            "test_size": len(X_test),
+            "class_order": list(self.label_encoder.classes_),
+            "train_size": int(len(X_train)),
+            "test_size": int(len(X_test)),
         }
 
-        logger.info("classifier.trained", accuracy=accuracy, macro_f1=macro_f1)
+        logger.info("classifier.trained",
+                    accuracy=metrics["accuracy"], macro_f1=metrics["macro_f1"])
         return metrics
 
 

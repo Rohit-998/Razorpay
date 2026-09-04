@@ -221,17 +221,31 @@ def emit(rng: np.random.Generator, cause: str) -> Emission:
     )
 
 
-def label_ambiguity() -> dict[str, float]:
+def label_ambiguity(prior: dict[str, float] | None = None) -> dict[str, float]:
     """Bayes-optimal accuracy achievable from the error triple alone.
 
     Reported in the eval output as a sanity bound: it is the score a model gets
     from the error fields with no bank, customer or timing context. A classifier
     that does not clear it is not adding anything, and one that reports far above
     it is leaking.
+
+    `prior` is the share of each cause in the traffic being scored, and it is not a
+    detail. The bound rises as the prior gets more lopsided, because a Bayes
+    classifier facing an ambiguous signature can fall back on which cause is more
+    common — at the limit, one cause with all the mass is predictable at 100% from
+    no evidence whatsoever. So a bound computed under a uniform prior is the right
+    reference for "no knowledge of the mix" and the wrong one to hold a model
+    trained on a specific scenario against; that model has learned the mix, and
+    will clear the uniform figure without leaking anything. Defaults to uniform,
+    which is what the eval report quotes.
     """
     from collections import defaultdict
 
-    prior = {cause: 1.0 / len(EMISSIONS) for cause in EMISSIONS}
+    if prior is None:
+        prior = {cause: 1.0 / len(EMISSIONS) for cause in EMISSIONS}
+    total_mass = sum(prior.values())
+    prior = {cause: prior.get(cause, 0.0) / total_mass for cause in EMISSIONS}
+
     joint: dict[tuple[str, str, str], dict[str, float]] = defaultdict(dict)
     for cause, profile in EMISSIONS.items():
         for source, p_source in profile.source.items():
