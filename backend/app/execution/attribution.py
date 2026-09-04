@@ -43,6 +43,15 @@ SYSTEM_RECOVERED = "SYSTEM_RECOVERED"
 AMBIGUOUS = "AMBIGUOUS"
 CUSTOMER_SELF_RECOVERED = "CUSTOMER_SELF_RECOVERED"
 
+VERDICTS = (SYSTEM_RECOVERED, AMBIGUOUS, CUSTOMER_SELF_RECOVERED)
+"""The three verdicts, named so a test can check nothing else produces one.
+
+`app/audit/attribution.py` used to hold a second `AttributionEngine` that read the audit
+trail's last event type instead of the clock, and booked a retry followed by any capture as
+`SYSTEM_RECOVERED` on the grounds that it had "likely caused" it. It had no callers, which is
+what let it survive: dead code asserting the opposite of the project's central claim. It is
+deleted, and `tests/test_attribution.py` fails if a verdict is decided anywhere but here."""
+
 
 def attribute(
     *,
