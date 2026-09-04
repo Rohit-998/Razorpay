@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     quiet_hours_end: int = 8
     max_recovery_window_hours: int = 72
     min_retry_interval_minutes: int = 15
-    max_link_amount_paise: int = 5_000_000
+    upi_transaction_ceiling_paise: int = 10_000_000
     require_action_above_paise: int = 1_000_000
 
     # LLM

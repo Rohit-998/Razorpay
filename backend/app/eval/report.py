@@ -207,28 +207,33 @@ def _compliance(run: EvalRun) -> list[str]:
     lines = [
         "## Whether it could actually ship",
         "",
-        "None of these appear in a recovery rate. The first three are gates — zero is "
+        "None of these appear in a recovery rate. The first four are gates — zero is "
         "attainable for each, so any count above zero is a defect and no amount of lift "
-        "buys it back. The fourth is a cost: a failed retry can kill a working card "
+        "buys it back. The fifth is a cost: a failed retry can kill a working card "
         "whatever the reason for the failure, so the only policy that blocks nothing is "
         f"one that retries nothing. Counts are totals over all {batches:,} batches.",
         "",
-        "| Policy | Messages in quiet hours | Actions the gateway refused | Failed to stop "
-        "| Working instruments we blocked | Verdict |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Policy | Messages in quiet hours | Actions the gateway refused | Actions "
+        "compliance would refuse | Failed to stop | Working instruments we blocked "
+        "| Verdict |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for policy in run.policies:
         totals = {"quiet_hour_contacts": 0, "self_inflicted_blocks": 0,
-                  "invalid_actions": 0, "episodes_at_step_cap": 0}
-        contacts = live = 0
+                  "invalid_actions": 0, "engine_refused_actions": 0,
+                  "episodes_at_step_cap": 0}
+        contacts = live = actions = 0
         for scenario in run.scenarios:
             result = run.get(policy, scenario)
             contacts += result.total_contacts
             live += result.total_live_instrument_payments
+            actions += result.total_actions
             for key, value in result.totals_of_concern.items():
                 totals[key] += value
         quiet = totals["quiet_hour_contacts"]
         quiet_text = f"{quiet:,}" + (f" of {contacts:,}" if quiet else "")
+        refused = totals["engine_refused_actions"]
+        refused_text = f"{refused:,}" + (f" of {actions:,}" if refused else "")
         blocks = totals["self_inflicted_blocks"]
         rate = blocks / live if live else 0.0
         block_text = f"{blocks:,} of {live:,} ({rate:.2%})" if blocks else "0"
@@ -242,12 +247,20 @@ def _compliance(run: EvalRun) -> list[str]:
             verdict = "clean"
         lines.append(
             f"| `{policy}` | {quiet_text} | {totals['invalid_actions']:,} | "
-            f"{totals['episodes_at_step_cap']:,} | {block_text} | {verdict} |"
+            f"{refused_text} | {totals['episodes_at_step_cap']:,} | {block_text} "
+            f"| {verdict} |"
         )
     lines += [
         "",
         "Quiet hours are 22:00–08:00 IST, judged against when the message was sent rather "
-        "than when its effects settled. *Working instruments we blocked* counts cards and "
+        "than when its effects settled. *Actions compliance would refuse* is the strictest "
+        "column here and the only one that can invalidate the money in the table above it: "
+        "every action each policy took is replayed through "
+        "`app/execution/compliance.py` — the same pure function the live API calls on real "
+        "traffic, not a re-implementation of it — and counted if it would be blocked at the "
+        "door. Lift earned by an action production refuses to take is lift that cannot be "
+        "banked, so a policy with a count here is quoting a number it could not collect. "
+        "*Working instruments we blocked* counts cards and "
         "mandates that were alive at failure time and were killed by our own retries — "
         "customers left worse off than if nothing had been done — as a share of the "
         "instruments that were alive to be broken. It is the one number here that is "

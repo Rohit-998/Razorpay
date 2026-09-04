@@ -105,8 +105,11 @@ unaided it delays nothing but our own knowledge. It has to buy something."""
 
 MAX_RETRIES_PER_PAYMENT = 3
 MAX_CONTACTS_PER_DAY = 2
-"""Operational limits, deliberately identical to `max_retries_per_payment` and
-`max_contacts_per_day` in `app/config.py`, which is what the deployed
+MIN_RETRY_INTERVAL_MINUTES = 15
+UPI_TRANSACTION_CEILING_PAISE = 10_000_000
+"""Operational limits, deliberately identical to `max_retries_per_payment`,
+`max_contacts_per_day`, `min_retry_interval_minutes` and
+`upi_transaction_ceiling_paise` in `app/config.py`, which is what the deployed
 `ComplianceEngine` enforces on live traffic. `test_policies.py` asserts they still
 match.
 
@@ -117,7 +120,14 @@ which is how 266 episodes ran to the step cap before this existed. That is not a
 tuning problem, it is the correct answer to the wrong question: no issuer, risk team
 or customer will accept forty authorisation attempts on one order however cheap each
 one is. Measuring a policy that ignores the limits its own production compliance
-engine enforces would report money that could never actually be collected."""
+engine enforces would report money that could never actually be collected.
+
+The last two were added after measuring exactly that. With only the retry and contact
+caps in the policy, 18% of its retries landed inside the gateway's minimum interval —
+every one of them money the report claimed and production would have refused at the
+door. The UPI ceiling is NPCI's, not ours, and it binds a *rail* rather than a
+payment: above ₹1 lakh a collect request is declined by the network, so the policy
+routes those to a rail that can carry the amount instead of dropping the payment."""
 
 
 @dataclass(frozen=True)
@@ -235,23 +245,45 @@ class PayRevivePolicy(BasePolicy):
         hold could not justify itself and the policy gave up on it instead of waiting
         until 08:00. `rules` simply waited, and collected.
 
-        Escalation is added only when nothing cheaper clears the bar. It is the one
-        terminal action in the space — `run_episode` closes the episode on it — so its
-        true cost is not the ₹35 call, it is every action the payment will never get.
-        Pricing it as a peer of a retry had the policy phoning a ₹1.9 L failure at
-        minute zero, missing at the 60% connect rate, and closing a payment `rules`
-        recovered with a WhatsApp link. Ranking still decides *who* gets a slot; this
-        decides *when*, and the answer is last.
+        Escalation is added only once the payment has actually spent a cheaper route.
+        It is the one terminal action in the space — `run_episode` closes the episode on
+        it — so its true cost is not the ₹35 call, it is every action the payment will
+        never get. Pricing it as a peer of a retry had the policy phoning a ₹1.9 L
+        failure at minute zero, missing at the 60% connect rate, and closing a payment
+        `rules` recovered with a WhatsApp link. Ranking still decides *who* gets a slot;
+        this decides *when*, and the answer is after the cheap routes have had their turn.
+
+        `attempts_made or contacts_made` rather than "not the first step", because a
+        payment that has only ever waited has spent nothing and still has its whole tail
+        ahead of it. The exception is the case where that tail is empty anyway: when
+        nothing cheaper clears the floor, foreclosing routes worth under ₹5 costs
+        nothing, and for a ₹1.8 L failure on a dead instrument a human is the only thing
+        left that might work.
+
+        The gate used to be that floor alone, applied always, and it was far too tight.
+        `_agent_gain` already subtracts the best cheaper route, so demanding the
+        alternatives be worth under ₹5 *before* pricing the call made that subtraction a
+        no-op and left the bench idle: 26 of 28 slots unused on `festival_spike`, 0 of 16
+        on `outage_day`, against an oracle that spent 12 and 8. Two mechanisms were
+        costing the same thing, and the cruder one won.
         """
         candidates = self._retry_candidates(obs, ahead_minutes)
         if self._may_contact(obs, ahead_minutes):
             candidates += self._link_candidates(obs, ahead_minutes)
         best = max((c.value for c in candidates), default=0.0)
+        spent_something = obs.attempts_made > 0 or obs.contacts_made > 0
         if (
-            best <= MIN_ACTION_VALUE_PAISE
+            (spent_something or best <= MIN_ACTION_VALUE_PAISE)
             and obs.payment_id in self._agent_slots
             and not obs.escalated
             and obs.agent_calls_remaining > 0
+            # An agent call is customer contact, and the deployed engine charges it
+            # against the same daily budget as a message. Without this the policy
+            # phoned 235 customers it had already messaged twice that day — approved by
+            # arithmetic, refused by production, and the most intrusive of the three
+            # touches. Quiet hours come with it: a call at 02:00 is worse than the SMS
+            # we refuse to send.
+            and self._may_contact(obs, ahead_minutes)
         ):
             gain = self._agent_gain(obs)
             if gain > MIN_ACTION_VALUE_PAISE:
@@ -297,8 +329,15 @@ class PayRevivePolicy(BasePolicy):
         replaced by a number: the logs say a dark bank is still dark 91% of the time an
         hour later and clear 93% of the time by hour six, so how long to wait has an
         answer rather than a default.
+
+        A retry inside the gateway's minimum interval is not priced at all rather than
+        priced badly. It is not a bad bet, it is an action that would be refused before
+        it reached an issuer, and a rate fitted on retries that actually happened says
+        nothing about one that cannot.
         """
         if not obs.has_mandate or obs.attempts_made >= MAX_RETRIES_PER_PAYMENT:
+            return []
+        if self._retry_interval_remaining(obs, ahead_minutes) > 0.0:
             return []
         age = self._age(obs, ahead_minutes)
         weights = (
@@ -312,6 +351,8 @@ class PayRevivePolicy(BasePolicy):
         )
         out: list[Candidate] = []
         for method in obs.available_methods:
+            if not self._rail_carries(obs, method):
+                continue
             same = method is obs.method
             route = "retry_same" if same else f"retry_to_{method.value}"
             fallback = self._rate("retry_switched", obs, age=age) if not same else 0.0
@@ -365,6 +406,12 @@ class PayRevivePolicy(BasePolicy):
         uniformly random probe, so they are unconfounded — they would not be if
         they came from the incumbent's logs, where the channel is picked from the
         amount.
+
+        The rails a link may suggest are filtered by what the rail can carry rather
+        than by the amount alone, which is the difference between "this payment is too
+        big to ask for" and "UPI is too small to ask on". A ₹1.5 L failure is offered a
+        card link, and only a customer holding nothing but UPI is left with the agent
+        bench as their one route.
         """
         age = self._age(obs, ahead_minutes)
         opened = self._rate("link_open", obs, age=age)
@@ -390,11 +437,27 @@ class PayRevivePolicy(BasePolicy):
         return out
 
     def _link_rails(self, obs: Observation) -> list[PaymentMethod]:
-        """Which rail to put in the link. Only instruments the customer holds —
-        anything else is refused by the gateway and teaches the customer we are
-        broken."""
-        rails = list(obs.available_methods)
-        return rails if rails else [obs.method]
+        """Which rail to put in the link. Only instruments the customer holds and that
+        can carry the amount — anything else is refused by the gateway and teaches the
+        customer we are broken."""
+        rails = [m for m in obs.available_methods if self._rail_carries(obs, m)]
+        if rails:
+            return rails
+        return [obs.method] if self._rail_carries(obs, obs.method) else []
+
+    def _rail_carries(self, obs: Observation, method: PaymentMethod) -> bool:
+        """Whether this rail can move this amount at all.
+
+        NPCI declines a UPI collect above ₹1 lakh, so suggesting one is not a bet with
+        poor odds — it is an action the network refuses, and the fitted rate for
+        `retry_to_upi` was estimated on transactions that were allowed to happen. The
+        remedy is a different rail, not a smaller ambition, which is why this filters
+        methods rather than rejecting the payment.
+        """
+        return not (
+            method is PaymentMethod.UPI
+            and obs.amount > UPI_TRANSACTION_CEILING_PAISE
+        )
 
     def _pay_given_open(
         self, obs: Observation, method: PaymentMethod, age: int | None = None
@@ -435,10 +498,21 @@ class PayRevivePolicy(BasePolicy):
         most once per night, and it never fires while a retry is worth taking —
         server-side retries are not customer contact and quiet hours do not apply
         to them.
+
+        The retry is priced at the moment it becomes *legal* rather than right now,
+        which matters only when the gateway's interval is still running. A payment
+        whose next retry is worth taking in twelve minutes must not be put to sleep
+        for nine hours because the retry happens to be blocked at the instant we
+        looked — bank outages are disproportionately overnight, so that is the window
+        this policy least wants to forfeit.
         """
         if not self._is_quiet(obs):
             return None
-        if any(c.value > MIN_ACTION_VALUE_PAISE for c in self._retry_candidates(obs)):
+        wait_for = self._minutes_until_retryable(obs)
+        if any(
+            c.value > MIN_ACTION_VALUE_PAISE
+            for c in self._retry_candidates(obs, wait_for)
+        ):
             return None
         minutes = self._minutes_until_open(obs)
         later = self._best_value(obs, minutes)
@@ -473,25 +547,43 @@ class PayRevivePolicy(BasePolicy):
         That is also what makes the policy terminate. Every target is strictly later
         than the payment's current age, so each wait moves it past a knot it can never
         revisit, and there are three of them.
+
+        The retry interval is a fourth target, and the only one that is not a knot.
+        Without it the shortest wait available is hours long, so a payment whose best
+        route is a second retry twelve minutes from now had to either take a worse
+        action or stop — and dropping those retries hands the money back rather than
+        collecting it a quarter of an hour late. It cannot loop either: it exists only
+        while a retry is interval-blocked, waiting past the interval clears it, and
+        `MAX_RETRIES_PER_PAYMENT` bounds how many times a retry can arm it again.
         """
         hours = obs.minutes_since_failure / 60.0
-        best: Candidate | None = None
+        targets: list[tuple[int, str]] = []
+
+        wait_for = self._minutes_until_retryable(obs)
+        if wait_for:
+            targets.append((
+                wait_for,
+                f"until the gateway's {MIN_RETRY_INTERVAL_MINUTES}-minute retry "
+                "interval clears",
+            ))
         for knot in calibration.ELAPSED_KNOTS_HOURS:
             if knot <= hours or knot > HORIZON_HOURS:
                 continue
-            gap = knot - hours
-            minutes = int(gap * 60.0) + 1
+            targets.append((int((knot - hours) * 60.0) + 1, f"to the {knot:.0f}h mark"))
+
+        best: Candidate | None = None
+        for minutes, where in targets:
             later = self._best_value(obs, minutes)
             gain = later - best_now
             if gain <= WAIT_GAIN_THRESHOLD_PAISE or (best and gain <= best.value):
                 continue
-            forecast = self._health_later(obs, gap)
+            forecast = self._health_later(obs, minutes / 60.0)
             health = obs.bank_signal.observed_success_rate_1h
             recovered = forecast.get(len(calibration.HEALTH_KNOTS), 0.0)
             best = Candidate(
                 Action(ActionType.WAIT, wait_minutes=minutes),
                 gain,
-                f"waiting {minutes} minutes to the {knot:.0f}h mark: the best route is "
+                f"waiting {minutes} minutes {where}: the best route is "
                 f"worth ₹{later / 100:,.0f} there against ₹{best_now / 100:,.0f} now "
                 f"({obs.bank} is clearing {health:.0%} of charges this hour"
                 + (", with a concurrent failure spike"
@@ -531,24 +623,61 @@ class PayRevivePolicy(BasePolicy):
 
     # ── Compliance, which is not priced ─────────────────────────────────────
 
+    def _retry_interval_remaining(
+        self, obs: Observation, ahead_minutes: float = 0.0
+    ) -> float:
+        """Minutes until a server-side retry is legal again, 0.0 when it already is.
+
+        `None` means no retry has happened on this payment, which is not the same as
+        one having happened a long time ago — reading it as "unknown, assume blocked"
+        would stop the first retry on every payment, and reading it as 0 would stop
+        none of them.
+        """
+        if obs.minutes_since_last_retry is None:
+            return 0.0
+        return max(
+            0.0,
+            MIN_RETRY_INTERVAL_MINUTES - (obs.minutes_since_last_retry + ahead_minutes),
+        )
+
+    def _minutes_until_retryable(self, obs: Observation) -> int:
+        """The same figure as a whole-minute wait, 0 when a retry is legal now.
+
+        Rounded up rather than to nearest, so pricing the retry at this offset is
+        pricing it at a moment it is definitely allowed. Asking for exactly the
+        remaining fraction lands on the boundary, where the float subtraction can
+        leave a residual and keep the retry blocked at the very instant the wait was
+        chosen to unblock it.
+        """
+        remaining = self._retry_interval_remaining(obs)
+        return int(remaining) + 1 if remaining > 0.0 else 0
+
     def _may_contact(self, obs: Observation, ahead_minutes: float = 0.0) -> bool:
         """Whether a message is allowed. Not a term in any expectation.
 
-        Two limits, both hard. Quiet hours, and the daily contact cap the deployed
-        compliance engine enforces — allowed as two per calendar day since failure,
-        because the `Observation` carries a contact count rather than the timestamps
-        a true rolling window would need, and counting from the failure is the
-        reading that cannot overspend.
+        Two limits, both hard: quiet hours, and the daily contact cap the deployed
+        compliance engine enforces — counted on the IST calendar day the message would
+        go out on, which is the day production's own counter is keyed to.
+
+        It used to be counted as two per day *since failure*, on a running total,
+        which is a cumulative budget rather than a daily one: a payment left alone on
+        its first day arrived at its second with four messages available and spent
+        them. Sixteen messages across the grid breached the deployed limit that way,
+        every one of them approved by arithmetic production would have refused.
 
         `ahead_minutes` asks the same question of a future moment, which the wait
-        look-ahead needs: a payment that failed at 23:00 is not contactable now and is
-        contactable at 08:00, and a valuation that could not express that gave up on it
-        overnight rather than holding.
+        look-ahead needs — and answering it is now exact rather than approximate. A
+        wait that crosses midnight arrives with the day's budget untouched, so a
+        payment contacted twice this evening is contactable again tomorrow morning and
+        the valuation can say so. A payment that failed at 23:00 is not contactable now
+        and is contactable at 08:00; a valuation that could not express that gave up on
+        it overnight rather than holding.
         """
         if self._is_quiet(obs, ahead_minutes):
             return False
-        days = int((obs.minutes_since_failure + ahead_minutes) // 1440) + 1
-        return obs.contacts_made < MAX_CONTACTS_PER_DAY * days
+        then = obs.now + timedelta(minutes=ahead_minutes)
+        spent = obs.contacts_today if then.date() == obs.now.date() else 0
+        return spent < MAX_CONTACTS_PER_DAY
 
     def _is_quiet(self, obs: Observation, ahead_minutes: float = 0.0) -> bool:
         """Judged on decision time — `obs.now` — because that is when the message

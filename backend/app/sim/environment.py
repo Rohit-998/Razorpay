@@ -143,6 +143,22 @@ class Episode:
     cost_paise: int = 0
     invalid_actions: int = 0
     last_contact_at: datetime | None = None
+    contacts_by_day: dict[str, int] = field(default_factory=dict)
+    """Messages sent, keyed by the IST calendar day they went out on.
+
+    `contacts` alone cannot answer the question the daily cap asks. A policy holding a
+    running total can only enforce a cumulative budget, which lets an unused day roll
+    forward — and a payment that was quiet on Monday then sent four messages on
+    Tuesday breached a limit of two while its total still looked legal. Production
+    keys the same counter on the IST day in Redis, so this is the counter it has, not
+    a convenience the simulator invented."""
+    last_retry_at: datetime | None = None
+    """When we last charged this payment server-side.
+
+    Present because `min_retry_interval_minutes` is a real gateway-facing limit and a
+    policy that cannot see this cannot comply with it. Measured against the simulator,
+    18% of the proposal's retries came inside the interval before it was observable —
+    money the report would have been claiming and production would have refused."""
     pending_click_at: datetime | None = None
     pending_click_method: PaymentMethod | None = None
     instrument_blocked: bool = False
@@ -488,6 +504,7 @@ class RecoveryEnv:
             failed_at=ep.failed_at,
             attempts_made=ep.attempts,
             contacts_made=ep.contacts,
+            contacts_today=ep.contacts_by_day.get(ep.now.strftime("%Y-%m-%d"), 0),
             escalated=ep.escalated,
             bank_signal=BankSignal(
                 bank=ep.bank,
@@ -507,6 +524,10 @@ class RecoveryEnv:
             agent_capacity=self.agent_capacity,
             last_action=ep.history[-1].action if ep.history else None,
             last_detail=ep.history[-1].detail if ep.history else "",
+            minutes_since_last_retry=(
+                None if ep.last_retry_at is None
+                else (ep.now - ep.last_retry_at).total_seconds() / 60.0
+            ),
         )
 
     # ── Physics: whether a charge actually authorises ─────────────────────
@@ -716,6 +737,7 @@ class RecoveryEnv:
             return 0, f"retry impossible: no {method.value} instrument on file", True
 
         ep.attempts += 1
+        ep.last_retry_at = ep.now
         ok, why = self._charge_succeeds(ep, ep.now, method, customer_present=False)
         if ok:
             ep.paid = True
@@ -762,6 +784,8 @@ class RecoveryEnv:
         ep.contacts += 1
         ep.customer.contacts += 1
         ep.last_contact_at = ep.now
+        day = ep.now.strftime("%Y-%m-%d")
+        ep.contacts_by_day[day] = ep.contacts_by_day.get(day, 0) + 1
 
         # Both draws happen every time, clicked or not, so two policies sending
         # the same number of messages stay aligned on this stream.
@@ -795,6 +819,14 @@ class RecoveryEnv:
         ep.escalated = True
         ep.terminal = Terminal.ESCALATED
         cost = ESCALATION_COST_PAISE
+        # An agent telephoning someone spends one of the day's contact slots, exactly
+        # as a message does — the deployed engine checks escalation against that budget,
+        # so the simulator has to charge it too or the policy is measured under a
+        # cheaper rulebook than production enforces. It is not counted in `ep.contacts`,
+        # which models *message* fatigue: a phone call is an imposition, but it is not
+        # the thing that makes the next SMS less likely to be read.
+        day = ep.now.strftime("%Y-%m-%d")
+        ep.contacts_by_day[day] = ep.contacts_by_day.get(day, 0) + 1
 
         intent = ep.customer.intent_at(ep.now, ep.failed_at)
         # Both draws happen every time so the stream stays aligned whether or not

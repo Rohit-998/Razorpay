@@ -167,6 +167,15 @@ class Observation:
 
     attempts_made: int = 0
     contacts_made: int = 0
+    contacts_today: int = 0
+    """Messages already sent to this customer on the current IST calendar day.
+
+    Separate from `contacts_made`, which is the lifetime total, because the daily cap
+    is a per-day rule and a total cannot express it. A policy holding only the total
+    can enforce a cumulative budget at best, which rolls an unused day forward — four
+    messages on Tuesday after a silent Monday breaches a limit of two while the total
+    still looks legal. Observable: production reads exactly this counter out of Redis,
+    keyed on the customer and the IST day."""
     escalated: bool = False
 
     bank_signal: BankSignal = field(default_factory=lambda: BankSignal(bank="unknown"))
@@ -193,6 +202,14 @@ class Observation:
 
     last_action: Action | None = None
     last_detail: str = ""
+
+    minutes_since_last_retry: float | None = None
+    """How long ago we last charged this payment server-side, `None` if never.
+
+    Observable, and load-bearing: the gateway enforces a minimum interval between
+    retries, so a policy that cannot see this cannot comply with it. `None` means no
+    retry has happened, not that one happened long ago — the distinction matters
+    because the first retry on a payment must not be blocked."""
 
     @property
     def minutes_since_failure(self) -> float:

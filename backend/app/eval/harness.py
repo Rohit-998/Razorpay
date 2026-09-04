@@ -200,6 +200,12 @@ class PolicyOnScenario:
         return sum(b.retries for b in self.batches)
 
     @property
+    def total_actions(self) -> int:
+        """Actions the compliance engine was asked to approve, across every batch. The
+        denominator for the refusals it would have issued."""
+        return sum(b.actions_needing_approval for b in self.batches)
+
+    @property
     def total_escalations(self) -> int:
         return sum(b.escalations for b in self.batches)
 
@@ -245,6 +251,7 @@ class PolicyOnScenario:
     HARD_LIMITS: ClassVar[tuple[str, ...]] = (
         "quiet_hour_contacts",
         "invalid_actions",
+        "engine_refused_actions",
         "episodes_at_step_cap",
     )
     """The concerns where zero is attainable, and therefore required.
@@ -260,6 +267,9 @@ class PolicyOnScenario:
             "quiet_hour_contacts": sum(b.quiet_hour_contacts for b in self.batches),
             "self_inflicted_blocks": sum(b.self_inflicted_blocks for b in self.batches),
             "invalid_actions": sum(b.invalid_actions for b in self.batches),
+            "engine_refused_actions": sum(
+                b.engine_refused_actions for b in self.batches
+            ),
             "episodes_at_step_cap": sum(b.episodes_at_step_cap for b in self.batches),
         }
 

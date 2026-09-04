@@ -66,7 +66,9 @@ class RecoveryExecutor:
                     session_id, payment.payment_id, "PAYMENT_LINK_SENT", 
                     {"link_id": link_data.get("id"), "short_url": link_data.get("short_url")}
                 )
-                await compliance_engine.record_contact(payment.customer_contact or payment.customer_email)
+                await compliance_engine.record_contact(
+                    compliance_engine.contact_key(payment)
+                )
                 return True
             else:
                 event_store.log_exception(session_id, payment.payment_id, "Failed to create payment link", "EXECUTION_ERROR")
@@ -75,6 +77,13 @@ class RecoveryExecutor:
         # 4. ESCALATE
         elif strategy == RecoveryStrategy.ESCALATE:
             event_store.log_escalation(session_id, payment.payment_id, decision.reasoning)
+            # An agent telephoning the customer spends one of the day's contact slots.
+            # The compliance engine already *checks* escalation against that budget, so
+            # not recording it here meant the ledger it checked against was missing its
+            # most intrusive entry — two messages and a phone call all counted as two.
+            await compliance_engine.record_contact(
+                compliance_engine.contact_key(payment)
+            )
             # Would typically push to Zendesk, Slack, or merchant dashboard webhook
             logger.info("executor.escalated", payment_id=payment.payment_id)
             return True

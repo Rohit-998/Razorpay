@@ -27,6 +27,14 @@ good dishonestly:
   None of them show up in a recovery rate, and zero is attainable for all three,
   so any count above zero is a defect rather than a trade.
 
+  `engine_refused_actions` is the strongest form of that test, and the only field
+  here that can invalidate every other number in the row. It replays each action
+  through the deployed compliance engine — the real one, the pure function the live
+  API calls — and counts what it would refuse at the door. Money recovered by an
+  action production declines to take is money the report cannot claim. Zero is
+  attainable, so it is a veto rather than a trade, and it is carried for every
+  policy on the ladder rather than only for the proposal.
+
   `self_inflicted_blocks` is the one cost that is not a veto — a failed retry can
   kill a working card whatever the reason for the failure, so the only policy with
   zero of them is one that never retries. It is reported as a rate against the
@@ -43,7 +51,9 @@ import math
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from datetime import datetime
 
+from app.execution import compliance
 from app.policies.base import MAX_STEPS_PER_EPISODE
 from app.sim.environment import Episode, RecoveryEnv
 from app.sim.types import ActionType, AttributionTruth
@@ -100,6 +110,8 @@ class BatchMetrics:
     agent_capacity: int
 
     invalid_actions: int
+    engine_refused_actions: int
+    actions_needing_approval: int
     quiet_hour_contacts: int
     self_inflicted_blocks: int
     live_instrument_payments: int
@@ -148,6 +160,74 @@ class BatchMetrics:
         if not self.live_instrument_payments:
             return 0.0
         return self.self_inflicted_blocks / self.live_instrument_payments
+
+
+APPROVABLE_ACTIONS = frozenset(
+    {ActionType.RETRY, ActionType.SEND_LINK, ActionType.ESCALATE}
+)
+"""Actions the compliance engine can say no to. The rest cost nothing to take."""
+
+
+def engine_refusals(episodes: list[Episode]) -> list[str]:
+    """Replay every action through the deployed compliance engine; return what it refuses.
+
+    Not a re-implementation of the rules. This is `app.execution.compliance.evaluate`,
+    the same pure function the live API calls on real traffic, fed the counters the
+    engine derives from Redis and Postgres. The simulator has its own notion of a legal
+    action — `Step.invalid` — but that is the *gateway* refusing an impossible request,
+    which is a different bouncer at a different door. A retry twelve minutes after the
+    last one is perfectly possible; it is merely not allowed.
+
+    A policy with refusals here is a policy whose measured recovery is partly
+    uncollectable: the report would be quoting money production declines to go after.
+    That makes this the one number in the table that can invalidate the rest of it,
+    which is why every policy on the ladder carries it rather than just the proposal.
+
+    The counters are rebuilt per payment from the history rather than read off the
+    episode, because the engine's question is always "given what had happened by then",
+    and the episode only records where it ended up.
+    """
+    refused: list[str] = []
+    for episode in episodes:
+        retries = 0
+        last_retry: datetime | None = None
+        per_day: dict[str, int] = {}
+        for step in episode.history:
+            if step.invalid:
+                continue
+            at = step.taken_at
+            verdict = compliance.evaluate(
+                action=step.action.type,
+                amount_paise=episode.amount,
+                at=at,
+                failed_at=episode.failed_at,
+                retries_made=retries,
+                contacts_today=per_day.get(compliance.ist_day(at), 0),
+                minutes_since_last_retry=(
+                    None if last_retry is None
+                    else (at - last_retry).total_seconds() / 60.0
+                ),
+                has_mandate=episode.customer.has_mandate,
+                # A retry re-charges the instrument on file, so its rail is the one that
+                # failed; a link may name a different one.
+                method=step.action.method or episode.method,
+            )
+            if not verdict.approved:
+                refused.append(
+                    f"{episode.payment_id} {step.action.label()} at {at:%d %H:%M}: "
+                    f"{'; '.join(verdict.blocked_by)}"
+                )
+            if step.action.type is ActionType.RETRY:
+                retries, last_retry = retries + 1, at
+            elif step.action.type in (ActionType.SEND_LINK, ActionType.ESCALATE):
+                # Both spend a slot from the day's contact budget, and both record one in
+                # `executor.py`. An agent telephoning someone is the most intrusive of the
+                # three touches, so a ledger that omitted it let two messages and a phone
+                # call all count as two.
+                per_day[compliance.ist_day(at)] = (
+                    per_day.get(compliance.ist_day(at), 0) + 1
+                )
+    return refused
 
 
 def _median(values: list[float]) -> float:
@@ -234,6 +314,18 @@ def collect(
         escalations=sum(1 for e in episodes if e.escalated),
         agent_capacity=env.agent_capacity,
         invalid_actions=sum(e.invalid_actions for e in episodes),
+        engine_refused_actions=len(engine_refusals(episodes)),
+        # The denominator for the line above: only the actions the engine can refuse.
+        # `WAIT` and `GIVE_UP` are approved unconditionally — spending nothing cannot
+        # breach a limit on spending — so counting them would pad the base with actions
+        # that are unrefusable by construction and make every policy look compliant in
+        # proportion to how much it dithered.
+        actions_needing_approval=sum(
+            1
+            for e in episodes
+            for step in e.history
+            if not step.invalid and step.action.type in APPROVABLE_ACTIONS
+        ),
         quiet_hour_contacts=quiet_contacts,
         self_inflicted_blocks=sum(
             1 for e in episodes if e.instrument_blocked and not e.instrument_dead_at_failure
@@ -401,8 +493,9 @@ class Comparison:
 
         Kept separate from the money on purpose. Every item here is invisible in a
         recovery rate, and each one is a thing a payments team would refuse to ship:
-        messaging people overnight, proposing actions the gateway rejects, failing
-        to terminate, and reporting two figures that contradict each other.
+        messaging people overnight, proposing actions the gateway rejects, taking
+        actions our own compliance engine would block, failing to terminate, and
+        reporting two figures that contradict each other.
 
         Instruments we blocked is deliberately *not* here; it is in `harms`. The
         distinction is whether zero is attainable. A policy can send no message
@@ -422,6 +515,11 @@ class Comparison:
         if m.invalid_actions:
             problems.append(
                 f"{m.invalid_actions} actions the gateway refused as structurally impossible"
+            )
+        if m.engine_refused_actions:
+            problems.append(
+                f"{m.engine_refused_actions} actions the deployed compliance engine "
+                "would refuse, so their recoveries are not collectable"
             )
         if m.episodes_at_step_cap:
             problems.append(

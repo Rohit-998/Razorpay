@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.eval.metrics import engine_refusals
 from app.policies import (
     DoNothingPolicy,
     NaiveRetryPolicy,
@@ -28,7 +29,13 @@ from app.policies import (
     run_episode,
 )
 from app.policies.base import MAX_STEPS_PER_EPISODE
-from app.policies.payrevive import MAX_CONTACTS_PER_DAY, MAX_RETRIES_PER_PAYMENT
+from app.policies.payrevive import (
+    MAX_CONTACTS_PER_DAY,
+    MAX_RETRIES_PER_PAYMENT,
+    MIN_ACTION_VALUE_PAISE,
+    MIN_RETRY_INTERVAL_MINUTES,
+    UPI_TRANSACTION_CEILING_PAISE,
+)
 from app.policies.rules import MAX_CONTACTS
 from app.sim.environment import ESCALATION_COST_PAISE, RecoveryEnv
 from app.sim.scenarios import SCENARIOS
@@ -292,7 +299,8 @@ def test_payrevive_beats_the_hand_written_rules(scenario: str) -> None:
 
 @pytest.mark.parametrize("scenario", SCENARIO_NAMES)
 def test_payrevive_never_opens_with_the_terminal_action(scenario: str) -> None:
-    """An agent call closes the episode, so it has to be the last thing tried.
+    """An agent call closes the episode, so it may only be opened with when the
+    episode has nothing else in it.
 
     This was a real loss. Escalation was priced as a peer of a retry, so the batch's
     largest failures were phoned at minute zero — and since only 60% of calls connect,
@@ -300,6 +308,20 @@ def test_payrevive_never_opens_with_the_terminal_action(scenario: str) -> None:
     fix is not to escalate less but to escalate later: `payrevive` still ranks the whole
     batch to decide *who* gets one of the scarce slots, and now spends the slot only
     once nothing cheaper clears the bar.
+
+    The assertion used to be a blanket ban, and a blanket ban was wrong. Three payments
+    in the grid open with a call and are right to: ₹1.18–1.81 L failures on instruments
+    the fitted model prices at under ₹5 of expected recovery across every legal route it
+    holds. Foreclosing routes worth nothing costs nothing, and a human is the only thing
+    left that might work. So the invariant is the gate itself rather than its usual
+    consequence — escalation is never first *while a cheaper route is worth taking* —
+    which is what the original bug violated and a count of first-actions only detected
+    by accident.
+
+    It reaches into `_priced` deliberately. The property is about what the policy knew
+    when it decided, and that is not recoverable from the finished episode: by the time
+    the history exists, the observation that justified step 0 is gone. Re-deriving it
+    means re-observing the same batch before anything has happened to it.
     """
     _, episodes = _run(scenario, BUILDERS["payrevive"])
     opened_with = [
@@ -309,9 +331,29 @@ def test_payrevive_never_opens_with_the_terminal_action(scenario: str) -> None:
     ]
     escalated = sum(1 for e in episodes if e.escalated)
     assert escalated > 0, "no payment was escalated, so this proves nothing"
-    assert not opened_with, (
-        f"payrevive escalated {len(opened_with)} payments as their first action on "
-        f"{scenario}, foreclosing every cheaper route: {opened_with[:3]}"
+
+    # Same scenario, same seed, so the same batch — observed at reset, which is the
+    # state every step 0 above was decided from.
+    env = RecoveryEnv(SCENARIOS[scenario], seed=SEED)
+    fresh = {e.payment_id: e for e in env.reset()}
+    policy = PayRevivePolicy(env)
+    policy.begin(len(fresh))
+    foreclosed = []
+    for payment_id in opened_with:
+        obs = env.observe(fresh[payment_id])
+        cheaper = [
+            c for c in policy._priced(obs) if c.action.type is not ActionType.ESCALATE
+        ]
+        best = max(cheaper, key=lambda c: c.value, default=None)
+        if best is not None and best.value > MIN_ACTION_VALUE_PAISE:
+            foreclosed.append(
+                f"{payment_id} (₹{fresh[payment_id].amount_rupees:,.0f}) had "
+                f"{best.action.type.value} worth ₹{best.value / 100:,.0f}"
+            )
+    assert not foreclosed, (
+        f"payrevive spent an agent slot on {len(foreclosed)} of the {len(opened_with)} "
+        f"payments it opened with a call on {scenario} while something cheaper was "
+        f"worth trying, ending the episode to do it: {foreclosed[:3]}"
     )
 
 
@@ -386,23 +428,31 @@ def test_payrevive_never_messages_inside_quiet_hours(scenario: str) -> None:
 def test_payrevive_honours_the_limits_its_own_compliance_engine_enforces(
     scenario: str,
 ) -> None:
-    """The simulated policy and the deployed `ComplianceEngine` have to agree.
+    """Replay every action through the deployed engine and require it to approve.
 
-    If the policy is measured while exceeding `max_retries_per_payment` or
-    `max_contacts_per_day`, the report is quoting money that production would block
-    on the way out — which is worse than quoting no number at all.
+    Not a re-implementation of the rules — the actual `compliance.evaluate` the API
+    calls on live traffic, fed the counters the engine derives from Redis. If the
+    policy is measured while taking actions production would refuse at the door, the
+    report is quoting money that cannot be collected, which is worse than quoting no
+    number at all.
+
+    It has caught four real breaches, none of which any aggregate would have shown:
+    18% of retries inside the gateway's minimum interval, sixteen messages over the
+    daily contact cap from a budget that was cumulative rather than daily, 235 agent
+    calls to customers already messaged twice that day, and UPI collect requests above
+    the ₹1 lakh the network will carry.
+
+    The replay itself lives in `app.eval.metrics.engine_refusals`, because the report
+    publishes the same count for every policy on the ladder and a test asserting on a
+    privately re-derived number would eventually disagree with the table it is meant to
+    be guarding.
     """
     _, episodes = _run(scenario, BUILDERS["payrevive"])
-    for e in episodes:
-        days = int((e.now - e.failed_at).total_seconds() // 86400) + 1
-        assert e.attempts <= MAX_RETRIES_PER_PAYMENT, (
-            f"{e.payment_id} took {e.attempts} retries, over the "
-            f"{MAX_RETRIES_PER_PAYMENT} the compliance engine allows"
-        )
-        assert e.contacts <= MAX_CONTACTS_PER_DAY * days, (
-            f"{e.payment_id} was messaged {e.contacts} times across {days} day(s), "
-            f"over the {MAX_CONTACTS_PER_DAY}/day the compliance engine allows"
-        )
+    refused = engine_refusals(episodes)
+    assert not refused, (
+        f"the deployed compliance engine refuses {len(refused)} of payrevive's "
+        f"actions on {scenario}, first: {refused[0]}"
+    )
 
 
 def test_payrevives_limits_match_the_deployed_compliance_engine() -> None:
@@ -417,6 +467,8 @@ def test_payrevives_limits_match_the_deployed_compliance_engine() -> None:
     settings = get_settings()
     assert MAX_RETRIES_PER_PAYMENT == settings.max_retries_per_payment
     assert MAX_CONTACTS_PER_DAY == settings.max_contacts_per_day
+    assert MIN_RETRY_INTERVAL_MINUTES == settings.min_retry_interval_minutes
+    assert UPI_TRANSACTION_CEILING_PAISE == settings.upi_transaction_ceiling_paise
 
 
 @pytest.mark.parametrize("scenario", SCENARIO_NAMES)
