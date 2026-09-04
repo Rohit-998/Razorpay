@@ -95,6 +95,12 @@ def _policy_json(result: PolicyOnScenario) -> dict:
             "spend_rupees": round(result.total_spend_rupees, 2),
             "retries": result.total_retries,
             "contacts": result.total_contacts,
+            # The denominator for `concerns.engine_refused_actions`. The markdown prints
+            # "8,800 of 46,174" and the JSON used to carry only the 8,800, which meant an
+            # API built on this file could show a bare count where the report shows a rate.
+            # A count without its denominator is the one number in this table a reader
+            # cannot check.
+            "actions_needing_approval": result.total_actions,
             "escalations": result.total_escalations,
             "agent_capacity": result.total_agent_capacity,
             "live_instrument_payments": result.total_live_instrument_payments,

@@ -63,7 +63,11 @@ app.add_middleware(
 )
 
 # ── Import and register API routes ───────────────────────────
-from app.api import health, webhooks, batch, dashboard, payments, metrics, model, pipeline
+# `evaluation`, not `eval` — the module serves the eval harness's output, and naming it
+# after the harness would shadow the builtin in this namespace.
+from app.api import (
+    health, webhooks, batch, dashboard, payments, metrics, model, pipeline, evaluation,
+)
 
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
@@ -73,6 +77,7 @@ app.include_router(payments.router, prefix="/api/v1", tags=["Payments"])
 app.include_router(metrics.router, prefix="/api/v1", tags=["Metrics"])
 app.include_router(model.router, prefix="/api/v1", tags=["Model"])
 app.include_router(pipeline.router, prefix="/api/v1", tags=["Pipeline"])
+app.include_router(evaluation.router, prefix="/api/v1", tags=["Evaluation"])
 
 
 @app.get("/")
