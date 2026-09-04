@@ -1,0 +1,418 @@
+"""The stubs, and the two places where the audit trail recorded something that never happened.
+
+Three defects of the same shape, all of which a test suite reading only aggregates would miss.
+
+`executor` logged `RETRY_SCHEDULED` with the enqueue commented out, so a delayed retry was a
+line in the audit trail and nothing else. The session stayed `OPEN` waiting for a wake-up that
+did not exist, and the bandit was rewarded or punished for a strategy with no mechanism behind
+it.
+
+`execute_delayed_retry` logged `DELAYED_RETRY_EXECUTED` and returned. Even had the enqueue been
+live, the wake-up did nothing.
+
+`razorpay_client.create_payment_link` returned `{"id": "plink_mock123"}` when unconfigured. The
+link id is the one field that carries causation — `payment_link.paid` names it, which is how a
+recovery becomes `SYSTEM_RECOVERED` rather than `AMBIGUOUS` — so a constant placeholder is both
+counterfeit and shared by every payment in the batch.
+
+What links the three is that none of them errors. Each returns success, writes a plausible
+audit row, and leaves the money unrecovered.
+"""
+
+from __future__ import annotations
+
+import asyncio
+
+import pytest
+
+from app import queue as queue_module
+from app import worker
+from app.execution import executor as executor_module
+from app.execution import razorpay_client as client_module
+from app.models.schemas import (
+    ErrorSource,
+    FailedPayment,
+    PaymentMethod,
+    RecoveryDecision,
+    RecoveryStrategy,
+)
+from datetime import datetime
+
+
+def _run(coro):
+    return asyncio.run(coro)
+
+
+def _payment(**overrides) -> FailedPayment:
+    fields = dict(
+        payment_id="pay_delayed_1",
+        order_id="order_1",
+        amount=50_000_00,
+        method=PaymentMethod.CARD,
+        bank="HDFC",
+        error_code="BAD_REQUEST_ERROR",
+        error_source=ErrorSource.GATEWAY,
+        error_step="payment_authorization",
+        error_reason="insufficient_funds",
+        error_description="not enough balance",
+        customer_contact="+919000000001",
+        customer_email="someone@example.com",
+        created_at=datetime(2026, 3, 24, 12, 0),
+    )
+    fields.update(overrides)
+    return FailedPayment(**fields)
+
+
+def _decision(strategy: RecoveryStrategy, **overrides) -> RecoveryDecision:
+    fields = dict(
+        strategy=strategy,
+        decided_by="bandit",
+        confidence=0.7,
+        reasoning="because the account is short and payday is tomorrow",
+    )
+    fields.update(overrides)
+    return RecoveryDecision(**fields)
+
+
+class _Recorder:
+    """What the executor did, in the order it did it."""
+
+    def __init__(self) -> None:
+        self.enqueued: list[tuple] = []
+        self.attempts: list[tuple[str, dict]] = []
+        self.exceptions: list[tuple[str, str]] = []
+        self.contacts: list[str] = []
+        self.enqueue_succeeds = True
+
+    def event(self, name: str) -> dict | None:
+        for attempt, data in self.attempts:
+            if attempt == name:
+                return data
+        return None
+
+
+@pytest.fixture()
+def acted(monkeypatch: pytest.MonkeyPatch) -> _Recorder:
+    rec = _Recorder()
+
+    async def fake_enqueue(job: str, *args, defer_minutes: int = 0) -> bool:
+        rec.enqueued.append((job, args, defer_minutes))
+        return rec.enqueue_succeeds
+
+    class _Events:
+        def log_recovery_attempt(self, _s, _p, name, data=None):
+            rec.attempts.append((name, data or {}))
+
+        def log_exception(self, _s, _p, reason, category):
+            rec.exceptions.append((reason, category))
+
+        def log_escalation(self, *_a, **_k):
+            pass
+
+    class _Compliance:
+        def contact_key(self, payment) -> str:
+            return payment.customer_contact or ""
+
+        async def record_contact(self, key: str) -> None:
+            rec.contacts.append(key)
+
+    monkeypatch.setattr(executor_module, "enqueue", fake_enqueue)
+    monkeypatch.setattr(executor_module, "event_store", _Events())
+    monkeypatch.setattr(executor_module, "compliance_engine", _Compliance())
+    return rec
+
+
+# ── A scheduled retry is now actually scheduled ───────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "strategy", [RecoveryStrategy.DELAYED_RETRY, RecoveryStrategy.SCHEDULED_RETRY]
+)
+def test_scheduling_a_retry_puts_a_job_on_the_queue(
+    acted: _Recorder, strategy: RecoveryStrategy
+) -> None:
+    """The whole defect, in one assertion: the delay has to exist somewhere other than a log."""
+    assert _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(strategy, delay_minutes=90)
+        )
+    )
+    assert acted.enqueued == [
+        ("execute_delayed_retry", ("pay_delayed_1", "sess-1"), 90)
+    ]
+    assert acted.event("RETRY_SCHEDULED") == {"delay_minutes": 90}
+
+
+def test_the_delay_the_policy_asked_for_is_the_delay_that_is_used(acted: _Recorder) -> None:
+    """`delay_minutes` is the policy's judgement about when the world will have changed —
+    payday, or the end of an outage. Substituting a default would discard it silently."""
+    _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(RecoveryStrategy.DELAYED_RETRY, delay_minutes=1440)
+        )
+    )
+    assert acted.enqueued[0][2] == 1440
+
+
+def test_an_unreachable_queue_is_reported_as_an_action_not_taken(acted: _Recorder) -> None:
+    """The failure mode that mattered. Redis Cloud is a network hop, and a retry that was
+    never queued must not be credited: `execute` returning True increments the retry count and
+    feeds the bandit's posterior, so a phantom retry teaches the policy that waiting works."""
+    acted.enqueue_succeeds = False
+    assert not _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(RecoveryStrategy.DELAYED_RETRY)
+        )
+    )
+    assert acted.event("RETRY_SCHEDULED") is None, "not recorded as scheduled"
+    assert acted.exceptions and "queue unreachable" in acted.exceptions[0][0]
+
+
+def test_scheduling_a_retry_does_not_spend_a_contact(acted: _Recorder) -> None:
+    """A retry is server-side. Charging it against the customer's two-messages-a-day budget
+    would make the policy quieter than compliance requires and lose recoverable money."""
+    _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(RecoveryStrategy.DELAYED_RETRY)
+        )
+    )
+    assert acted.contacts == []
+
+
+# ── The wake-up re-runs the pipeline rather than charging blind ────────────────
+
+
+class _Session:
+    def __init__(self, status: str) -> None:
+        self.data = {"status": status}
+
+    def table(self, _name):
+        return self
+
+    def select(self, *_a):
+        return self
+
+    def eq(self, *_a):
+        return self
+
+    def single(self):
+        return self
+
+    def execute(self):
+        return self
+
+
+@pytest.fixture()
+def woken(monkeypatch: pytest.MonkeyPatch) -> dict:
+    seen: dict = {"reprocessed": [], "attempts": []}
+
+    async def fake_process(_ctx, payment_id: str) -> None:
+        seen["reprocessed"].append(payment_id)
+
+    class _Events:
+        def log_recovery_attempt(self, _s, _p, name, data=None):
+            seen["attempts"].append(name)
+
+    monkeypatch.setattr(worker, "process_failed_payment", fake_process)
+    monkeypatch.setattr(worker, "event_store", _Events())
+    return seen
+
+
+def test_a_wake_up_re_enters_the_pipeline(
+    woken: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """It does not charge the card. The reason for waiting was that the world was wrong —
+    bank down, account short, details stale — so the only useful thing to do on waking is to
+    look again: fresh features, fresh classification, fresh compliance check against the
+    retry count as it now stands."""
+    monkeypatch.setattr(worker, "get_supabase", lambda: _Session("OPEN"))
+    _run(worker.execute_delayed_retry({}, "pay_1", "sess-1"))
+    assert woken["reprocessed"] == ["pay_1"]
+    assert woken["attempts"] == ["DELAYED_RETRY_WOKE_UP"]
+
+
+@pytest.mark.parametrize("status", ["RECOVERED", "FAILED", "ESCALATED"])
+def test_a_payment_settled_while_asleep_is_left_alone(
+    woken: dict, monkeypatch: pytest.MonkeyPatch, status: str
+) -> None:
+    """A session is `OPEN` only while the outcome is unknown. Retrying one that closed while
+    we were asleep charges a customer who has already paid."""
+    monkeypatch.setattr(worker, "get_supabase", lambda: _Session(status))
+    _run(worker.execute_delayed_retry({}, "pay_1", "sess-1"))
+    assert woken["reprocessed"] == []
+    assert woken["attempts"] == []
+
+
+def test_the_recovery_window_is_not_re_implemented_in_the_worker() -> None:
+    """Deliberate absence, asserted so nobody helpfully adds it.
+
+    A payment that wakes up past its 72 hours must not be retried — and that rule already
+    lives in `compliance.evaluate`, which returns `LOG_EXCEPTION` and gets written off with
+    its reason. A second copy of the arithmetic in the worker is how the limit the eval
+    measures and the limit production enforces drift apart.
+    """
+    import inspect
+
+    source = inspect.getsource(worker.execute_delayed_retry)
+    assert "max_recovery_window_hours" not in source
+
+
+# ── Bank health is polled, and an unanswered poll is not good news ─────────────
+
+
+class _Store:
+    def __init__(self) -> None:
+        self.writes: list[tuple[str, str, bool]] = []
+
+    async def set_bank_downtime(self, bank: str, severity: str, is_down: bool) -> None:
+        self.writes.append((bank, severity, is_down))
+
+
+@pytest.fixture()
+def store(monkeypatch: pytest.MonkeyPatch) -> _Store:
+    s = _Store()
+
+    class _Extractor:
+        pass
+
+    extractor = _Extractor()
+    extractor.store = s
+    monkeypatch.setattr(worker, "feature_extractor", extractor)
+    return s
+
+
+def _feed(monkeypatch: pytest.MonkeyPatch, result) -> None:
+    async def fake_fetch():
+        return result
+
+    monkeypatch.setattr(worker.razorpay_client, "fetch_downtimes", fake_fetch)
+
+
+def test_a_declared_outage_is_written_to_the_feature_store(
+    store: _Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The one input to the decision no single payment can supply.
+
+    A failure on HDFC says almost nothing alone. HDFC being in a declared outage says that
+    retrying now throws an attempt off a budget of three, and that waiting is not
+    procrastination. The classifier's bank-health feature reads what this writes, so the
+    empty stub meant every payment was scored as though the world were healthy.
+    """
+    _feed(monkeypatch, [
+        {"bank": "HDFC", "method": "netbanking", "severity": "high", "status": "started"},
+        {"bank": "ICIC", "method": "card", "severity": None, "status": "started"},
+    ])
+    _run(worker.poll_bank_downtimes({}))
+    assert ("HDFC", "high", True) in store.writes
+    # Razorpay does not always send a severity. Defaulting to `medium` keeps the bank flagged;
+    # defaulting to nothing would drop the outage entirely.
+    assert ("ICIC", "medium", True) in store.writes
+
+
+def test_a_bank_that_came_back_has_its_flag_cleared(
+    store: _Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A downtime never cleared is worse than one never recorded: it teaches the policy to
+    wait forever on a bank that is fine, and the payment ages out of its window asleep."""
+    ctx: dict = {}
+    _feed(monkeypatch, [{"bank": "HDFC", "severity": "high", "status": "started"}])
+    _run(worker.poll_bank_downtimes(ctx))
+    assert ctx["banks_down"] == {"HDFC"}
+
+    store.writes.clear()
+    _feed(monkeypatch, [])
+    _run(worker.poll_bank_downtimes(ctx))
+    assert store.writes == [("HDFC", "none", False)]
+    assert ctx["banks_down"] == set()
+
+
+def test_a_failed_poll_does_not_declare_the_world_healthy(
+    store: _Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`None` and `[]` are different answers and this is why the client distinguishes them.
+
+    An unreachable API means we do not know. Treating that as "nothing is down" would clear
+    every outage flag at exactly the moment the system has no information, which is the one
+    time being wrong is most expensive.
+    """
+    ctx = {"banks_down": {"HDFC"}}
+    _feed(monkeypatch, None)
+    _run(worker.poll_bank_downtimes(ctx))
+    assert store.writes == []
+    assert ctx["banks_down"] == {"HDFC"}, "still believed down, because we did not find out"
+
+
+def test_the_poller_runs_on_a_schedule_rather_than_being_a_registered_job() -> None:
+    """It was in `functions` with the cron commented out — so it was callable and never
+    called. A five-minute cron, and an outage noticed twenty minutes late has already cost
+    the retries taken during it."""
+    names = [f.__name__ for f in worker.WorkerSettings.functions]
+    assert "poll_bank_downtimes" not in names
+    assert worker.WorkerSettings.cron_jobs, "the cron is enabled, not commented out"
+
+
+# ── A payment link id is either real or absent ─────────────────────────────────
+
+
+def test_an_unconfigured_client_refuses_rather_than_inventing_a_link_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`plink_mock123` was a constant, and the link id is what carries causation.
+
+    `payment_link.paid` names the link that was paid, which is how a recovery becomes
+    `SYSTEM_RECOVERED` instead of `AMBIGUOUS`. A placeholder id is written to the audit trail
+    as though it were real, can never be paid, and is shared by every payment in the batch —
+    so the field the attribution verdict rests on would have been counterfeit and
+    non-unique at the same time.
+    """
+    client = client_module.RazorpayClient()
+    monkeypatch.setattr(client.settings, "razorpay_key_id", "")
+    result = _run(
+        client.create_payment_link(
+            amount=50_000_00, currency="INR", reference_id="pay_1",
+            description="d", customer_contact="+919000000001",
+            customer_email="someone@example.com",
+        )
+    )
+    assert result is None
+
+
+def test_no_placeholder_link_id_survives_anywhere_in_the_client() -> None:
+    """The literal itself, because the failure it caused was silent and a helpful
+    reinstatement would be too.
+
+    Docstrings are stripped before the scan: the module explains at length what
+    `plink_mock123` was and why returning it was worse than returning nothing, and that
+    explanation is the reason the id is unlikely to come back. What must not exist is a
+    placeholder in code that some caller could receive.
+    """
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(client_module))
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if ast.get_docstring(node) is not None:
+                node.body = node.body[1:]
+    assert "plink_mock123" not in ast.unparse(tree)
+
+
+def test_a_link_that_could_not_be_created_is_not_credited_as_an_action(
+    acted: _Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`None` from the client has to reach the caller as a failed action.
+
+    Otherwise the session is closed as though a link had gone out, the contact is charged
+    against the customer's daily budget, and the bandit updates on an arm that never fired.
+    """
+    async def no_link(**_kwargs):
+        return None
+
+    monkeypatch.setattr(client_module.razorpay_client, "create_payment_link", no_link)
+    assert not _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(RecoveryStrategy.LINK_SAME_METHOD)
+        )
+    )
+    assert acted.contacts == [], "a link that does not exist did not contact anyone"
+    assert acted.exceptions

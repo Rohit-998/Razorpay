@@ -4,6 +4,7 @@ from app.models.schemas import FailedPayment, RecoveryDecision, RecoveryStrategy
 from app.audit.event_store import event_store
 from app.execution.razorpay_client import razorpay_client
 from app.execution.compliance import compliance_engine
+from app.queue import enqueue
 import structlog
 import time
 
@@ -34,12 +35,28 @@ class RecoveryExecutor:
 
         # 2. DELAYED_RETRY / SCHEDULED_RETRY
         elif strategy in (RecoveryStrategy.DELAYED_RETRY, RecoveryStrategy.SCHEDULED_RETRY):
-            # We would enqueue a task in ARQ with a countdown/eta
             delay = decision.delay_minutes or 30
+            # The enqueue used to be a commented-out line above a `return True`. So the trail
+            # recorded `RETRY_SCHEDULED`, the session stayed OPEN waiting for a wake-up that
+            # did not exist, and the bandit was rewarded — or not — for a strategy that had
+            # no mechanism behind it. Reporting the action as taken is now conditional on it
+            # actually being on the queue.
+            queued = await enqueue(
+                "execute_delayed_retry",
+                payment.payment_id,
+                session_id,
+                defer_minutes=delay,
+            )
+            if not queued:
+                event_store.log_exception(
+                    session_id, payment.payment_id,
+                    f"could not schedule a retry in {delay} minutes: queue unreachable",
+                    "EXECUTION_ERROR",
+                )
+                return False
             event_store.log_recovery_attempt(
                 session_id, payment.payment_id, "RETRY_SCHEDULED", {"delay_minutes": delay}
             )
-            # await arq_queue.enqueue_job('execute_delayed_retry', payment.payment_id, session_id, _defer_by=delay*60)
             logger.info("executor.scheduled", payment_id=payment.payment_id, delay_minutes=delay)
             return True
 

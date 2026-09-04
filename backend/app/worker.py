@@ -1,7 +1,6 @@
 """ARQ Worker — background task processing for payment recovery."""
 
-from arq.connections import RedisSettings
-from arq import create_pool
+from arq import cron
 from app.config import get_settings
 from app.db.database import get_supabase
 from app.models.schemas import (
@@ -12,10 +11,12 @@ from app.models.schemas import (
 )
 from app.cache.feature_store import feature_extractor
 from app.ml.classifier import classifier
+from app.queue import enqueue, parse_redis_url
 from app.strategy.bandit import bandit
 from app.strategy.llm_reasoner import llm_reasoner
 from app.execution.compliance import IST, compliance_engine
 from app.execution.executor import executor
+from app.execution.razorpay_client import razorpay_client
 from app.audit.event_store import event_store
 from datetime import datetime, timedelta
 import structlog
@@ -215,15 +216,7 @@ async def _requeue(payment_id: str, minutes: int) -> bool:
     have all moved — and the right action then is not necessarily the one that was
     refused now.
     """
-    try:
-        arq_redis = await create_pool(parse_redis_url(settings.redis_url))
-        await arq_redis.enqueue_job(
-            "process_failed_payment", payment_id, _defer_by=minutes * 60
-        )
-        return True
-    except Exception as exc:
-        logger.error("worker.requeue_failed", payment_id=payment_id, error=str(exc))
-        return False
+    return await enqueue("process_failed_payment", payment_id, defer_minutes=minutes)
 
 
 async def _honour_the_remedy(
@@ -361,24 +354,85 @@ def _write_off(db, session_id: str, payment_id: str, reason: str) -> None:
 
 
 async def execute_delayed_retry(ctx, payment_id: str, session_id: str):
-    """Execute a delayed retry after bank recovery (invoked by ARQ)."""
+    """The wake-up for a scheduled retry — re-runs the pipeline instead of charging blind.
+
+    This used to log `DELAYED_RETRY_EXECUTED` and return. Nothing was retried, so a strategy
+    the bandit was rewarded for choosing had no mechanism behind it, and the audit trail
+    recorded an attempt that never happened.
+
+    It deliberately does not charge the card itself. The reason for waiting in the first place
+    is that the world was wrong at the moment of failure — the bank was down, the account was
+    short, the details were stale — and the only useful thing to do on waking is to look
+    again. So it re-enters `process_failed_payment`, which re-extracts features against the
+    *current* bank health, re-classifies, re-picks a strategy and re-checks compliance with
+    the retry count as it now stands. A retry that fires into an outage that is still running
+    is a wasted attempt off a budget of three.
+
+    Called in-process rather than re-enqueued: this job *is* the deferral arriving, and
+    deferring it again would put the payment behind another queue hop for no reason.
+
+    The 72-hour recovery window is not re-checked here. `compliance.evaluate` owns it, and a
+    second copy of that arithmetic in the worker is how the deployed limit and the measured
+    one drift apart. A payment that wakes up past its window is blocked with `LOG_EXCEPTION`
+    and written off by `_honour_the_remedy`, with the reason recorded.
+    """
     logger.info("worker.executing_delayed_retry", payment_id=payment_id, session_id=session_id)
-    # 1. Check if payment is still pending
     db = get_supabase()
-    s_result = db.table("recovery_sessions").select("status").eq("id", session_id).single().execute()
-    
+    s_result = (
+        db.table("recovery_sessions").select("status").eq("id", session_id).single().execute()
+    )
+
     if s_result.data and s_result.data["status"] != "OPEN":
-        logger.info("worker.delayed_retry_aborted", reason="Session no longer OPEN", session_id=session_id)
+        # The customer paid, or a human closed it, while we were asleep. Not a failure, and
+        # not something to retry — the session is only OPEN while the outcome is unknown.
+        logger.info(
+            "worker.delayed_retry_aborted",
+            reason="Session no longer OPEN",
+            session_id=session_id,
+            status=s_result.data["status"],
+        )
         return
-        
-    event_store.log_recovery_attempt(session_id, payment_id, "DELAYED_RETRY_EXECUTED")
-    # Simulation: In a real app, charge the tokenized card.
+
+    event_store.log_recovery_attempt(session_id, payment_id, "DELAYED_RETRY_WOKE_UP")
+    await process_failed_payment(ctx, payment_id)
 
 
 async def poll_bank_downtimes(ctx):
-    """Poll Razorpay Downtime API for bank health updates (Cron)."""
-    logger.info("worker.polling_downtimes")
-    # Simulation: Would hit Razorpay API and update feature_store.set_bank_downtime
+    """Refresh bank health from Razorpay's downtime feed.
+
+    This is the one input to the decision that no single payment can supply. A failure on
+    HDFC tells you almost nothing on its own; HDFC being in a declared outage tells you that
+    retrying now is throwing an attempt away, and that waiting is not procrastination. The
+    classifier's `bank_health_1h` feature and the recoverability model both read what this
+    writes, so an empty stub meant every payment was scored as though the world were healthy.
+
+    Writes into the same Redis keys the feature extractor reads, and clears the flag for
+    banks that have come back — a downtime that is never cleared is worse than one never
+    recorded, because it teaches the policy to wait forever.
+    """
+    downtimes = await razorpay_client.fetch_downtimes()
+    if downtimes is None:
+        # Unconfigured or unreachable. Logged and left alone: writing `is_down=false` for
+        # every bank on a failed poll would manufacture a healthy world out of an API error.
+        logger.warning("worker.downtime_poll_unavailable")
+        return
+
+    down_now = {d["bank"]: d for d in downtimes if d.get("bank")}
+    previously_down = set(ctx.get("banks_down") or ())
+
+    for bank, entry in down_now.items():
+        await feature_extractor.store.set_bank_downtime(
+            bank, entry.get("severity") or "medium", True
+        )
+    for bank in previously_down - set(down_now):
+        await feature_extractor.store.set_bank_downtime(bank, "none", False)
+
+    ctx["banks_down"] = set(down_now)
+    logger.info(
+        "worker.downtimes_updated",
+        down=sorted(down_now),
+        recovered=sorted(previously_down - set(down_now)),
+    )
 
 
 async def startup(ctx):
@@ -392,26 +446,15 @@ async def shutdown(ctx):
     logger.info("worker.stopped")
 
 
-# Parse Redis URL for ARQ settings
-def parse_redis_url(url: str) -> RedisSettings:
-    """Parse redis:// URL into ARQ RedisSettings."""
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    return RedisSettings(
-        host=parsed.hostname or "localhost",
-        port=parsed.port or 6379,
-        password=parsed.password,
-        database=int(parsed.path.lstrip("/") or 0),
-    )
-
-
 class WorkerSettings:
-    functions = [process_failed_payment, execute_delayed_retry, poll_bank_downtimes]
+    functions = [process_failed_payment, execute_delayed_retry]
+    cron_jobs = [
+        # Every five minutes. The feed is cheap, and a declared outage that we notice
+        # twenty minutes late has already cost us the retries taken during it.
+        cron(poll_bank_downtimes, minute=set(range(0, 60, 5)), run_at_startup=True),
+    ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = parse_redis_url(settings.redis_url)
     max_jobs = 10
     job_timeout = 300  # 5 minutes
-    
-    # Simple cron jobs (ARQ supports this)
-    # cron_jobs = [cron(poll_bank_downtimes, minute=set(range(0, 60, 5)))]
