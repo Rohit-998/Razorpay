@@ -45,6 +45,11 @@ async def get_stats():
     No rate is returned that divides recoveries by failures. The closest thing to a
     headline here is `attributed.SYSTEM_RECOVERED.amount_paise`, which is money we can
     point at a link for — and even that is a gross figure, not a lift.
+
+    `provably_ours.share_of_recovered` is served rather than left to the caller because the
+    dashboard needs a percentage for its progress bar, and a percentage the browser derives
+    is a percentage nobody reviewed. Its denominator is deliberately recovered rupees, not
+    failed payments, which is the distinction the whole endpoint exists to keep.
     """
     db = get_supabase()
     sessions = (
@@ -77,14 +82,41 @@ async def get_stats():
     payments = db.table("payments").select("amount").execute()
     at_risk_paise = sum(p["amount"] for p in (payments.data or []))
 
+    # The one share worth putting on a dashboard, computed here so the browser does not have
+    # to. Denominator is every rupee that came back, however it came back — so the figure
+    # answers "of the money recovered, how much can we show was us?" and falls when the
+    # ambiguous bucket grows. A rate over *failed* payments would be the recovery rate this
+    # endpoint refuses to serve; this is a share of recoveries, not a claim about failures.
+    recovered_paise = sum(b["amount_paise"] for b in attributed.values()) + unattributed[
+        "amount_paise"
+    ]
+    ours_paise = attributed["SYSTEM_RECOVERED"]["amount_paise"]
+
     return {
         "sessions_total": len(rows),
         "by_status": by_status,
         "open": by_status.get("OPEN", 0) + by_status.get("IN_PROGRESS", 0),
         "at_risk_paise": at_risk_paise,
+        # Ingested minus returned. Subtracted here because the dashboard would otherwise do
+        # it over whatever page of payments it happens to have fetched, which is a different
+        # and smaller number wearing the same label.
+        "unrecovered_paise": max(0, at_risk_paise - recovered_paise),
         "attributed": attributed,
         "unattributed": unattributed,
         "attribution_order": ATTRIBUTION_ORDER,
+        "provably_ours": {
+            "amount_paise": ours_paise,
+            "sessions": attributed["SYSTEM_RECOVERED"]["sessions"],
+            "recovered_paise": recovered_paise,
+            "share_of_recovered": (
+                round(ours_paise / recovered_paise, 4) if recovered_paise else 0.0
+            ),
+            "note": (
+                "Share of recovered rupees that Razorpay's webhook named our payment link "
+                "for. Not a recovery rate: the denominator is money that came back, not "
+                "payments that failed."
+            ),
+        },
         "counterfactual": {
             "available_at": "/api/v1/eval/ladder",
             "note": (

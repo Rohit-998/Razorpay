@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/app-shell";
 import { ArrowUpRight } from "../../components/icons";
-import { demoPayments } from "../../lib/demo-data";
-import { getPayments, type PaymentSummary } from "../../lib/api";
+import { getPayments, type Failure, type PaymentSummary } from "../../lib/api";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -19,19 +18,21 @@ function statusLabel(status: string) {
 }
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<PaymentSummary[]>(demoPayments);
+  const [payments, setPayments] = useState<PaymentSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [filter, setFilter] = useState("");
 
   const loadPayments = useCallback(async () => {
-    try {
-      const livePayments = await getPayments();
-      if (livePayments.length) setPayments(livePayments);
-    } catch {
-      /* keep demo data */
-    } finally {
-      setIsLoading(false);
+    const result = await getPayments(200);
+    if (result.ok) {
+      setPayments(result.data);
+      setFailure(null);
+    } else {
+      setPayments([]);
+      setFailure(result.error);
     }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -66,6 +67,12 @@ export default function PaymentsPage() {
         />
       </div>
 
+      {failure && (
+        <div className="simple-notice error" role="status">
+          {failure.message}{failure.fix ? " Run: " + failure.fix : ""}
+        </div>
+      )}
+
       <div className="simple-feed" role="list">
         <div className="simple-feed-head" aria-hidden="true">
           <span>Payment</span><span>AI diagnosis</span><span>Recommended action</span><span>Status</span><span />
@@ -82,7 +89,7 @@ export default function PaymentsPage() {
             </Link>
           ))
         }
-        {!isLoading && filtered.length === 0 && <p style={{ padding: 24, color: "#718078", fontSize: 12 }}>No payments match your filter.</p>}
+        {!isLoading && filtered.length === 0 && <p style={{ padding: 24, color: "#718078", fontSize: 12 }}>{failure ? "Nothing to list — the API did not answer." : payments.length ? "No payments match your filter." : "No payments ingested yet. Run a batch from the overview."}</p>}
       </div>
     </AppShell>
   );

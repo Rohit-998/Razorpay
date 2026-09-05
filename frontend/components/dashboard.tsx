@@ -4,8 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "./app-shell";
 import { ArrowUpRight, Check, Spark } from "./icons";
-import { demoPayments } from "../lib/demo-data";
-import { getPayments, runBatchRecovery, type BatchRunResult, type PaymentSummary } from "../lib/api";
+import {
+  getPayments,
+  getStats,
+  runBatch,
+  type BatchRunResult,
+  type DashboardStats,
+  type Failure,
+  type PaymentSummary,
+} from "../lib/api";
+import { paise, share } from "../lib/format";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -20,23 +28,36 @@ function statusLabel(status: string) {
   return status.replaceAll("_", " ");
 }
 
+/**
+ * The recovery overview.
+ *
+ * Every figure on this page is served. The version this replaced computed four of them in the
+ * browser from whatever page of payments it had fetched — including `recovered / total`, drawn
+ * as a progress bar labelled "recovery rate", which is the single number `reports/REPORT.md`
+ * argues is not a measurement of anything: it counts every customer who would have paid anyway
+ * as a win. `/dashboard/stats` deliberately does not serve it. What it does serve is the
+ * attribution split, and the bar now shows the share of recovered rupees Razorpay's webhook
+ * named our payment link for — a claim we can defend.
+ *
+ * And when the API is unreachable the page says so, with the command that fixes it. It used to
+ * fall back to `lib/demo-data.ts` behind a small "Showing sample data" badge: invented rows,
+ * invented root causes, rendered as a working product.
+ */
 export function Dashboard() {
-  const [payments, setPayments] = useState<PaymentSummary[]>(demoPayments);
+  const [payments, setPayments] = useState<PaymentSummary[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [batchState, setBatchState] = useState<"idle" | "running" | "complete" | "error">("idle");
   const [batchResult, setBatchResult] = useState<BatchRunResult | null>(null);
+  const [batchError, setBatchError] = useState<Failure | null>(null);
 
   const loadPayments = useCallback(async () => {
-    try {
-      const livePayments = await getPayments();
-      if (livePayments.length) setPayments(livePayments);
-      setIsDemo(livePayments.length === 0);
-    } catch {
-      setIsDemo(true);
-    } finally {
-      setIsLoading(false);
-    }
+    const [feed, summary] = await Promise.all([getPayments(), getStats()]);
+    if (feed.ok) setPayments(feed.data);
+    if (summary.ok) setStats(summary.data);
+    setFailure(feed.ok ? (summary.ok ? null : summary.error) : feed.error);
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -46,21 +67,19 @@ export function Dashboard() {
   async function handleBatchRun() {
     setBatchState("running");
     setBatchResult(null);
-    try {
-      const result = await runBatchRecovery();
-      setBatchResult(result);
+    setBatchError(null);
+    const result = await runBatch();
+    if (result.ok) {
+      setBatchResult(result.data);
       setBatchState("complete");
       await loadPayments();
-    } catch {
+    } else {
+      setBatchError(result.error);
       setBatchState("error");
     }
   }
 
-  const recovered = payments.filter((item) => item.status === "RECOVERED").length;
-  const active = payments.filter((item) => item.status === "IN_FLIGHT" || item.status === "QUEUED").length;
-  const atRisk = payments.filter((item) => item.status !== "RECOVERED").reduce((sum, item) => sum + item.amount, 0);
-  const restoredValue = payments.filter((item) => item.status === "RECOVERED").reduce((sum, item) => sum + item.amount, 0);
-  const recoveryRate = payments.length ? Math.round((recovered / payments.length) * 100) : 0;
+  const ours = stats?.provably_ours;
 
   return (
     <AppShell active="feed">
@@ -76,37 +95,46 @@ export function Dashboard() {
         </button>
       </header>
 
+      {failure && (
+        <div className="simple-notice error" role="status">
+          {failure.message}{failure.fix ? " Run: " + failure.fix : ""}
+        </div>
+      )}
+
       {batchState !== "idle" && (
         <div className={"simple-notice " + (batchState === "error" ? "error" : "")} role="status">
           {batchState === "running" && <><span className="spinner" /> Analysing payments and selecting recovery actions…</>}
           {batchState === "complete" && <><Check /> Batch complete{batchResult?.recovered !== undefined ? " — " + batchResult.recovered + " payments recovered" : "."}</>}
-          {batchState === "error" && <>Could not run the recovery batch. Check the FastAPI server and try again.</>}
+          {batchState === "error" && <>{batchError?.message ?? "Could not run the recovery batch."}{batchError?.fix ? " Run: " + batchError.fix : ""}</>}
         </div>
       )}
 
       <section className="simple-summary-grid" aria-label="Recovery metrics">
         <article className="simple-summary-main">
-          <span>Recovered today</span>
-          <strong>{isLoading ? "—" : money.format(restoredValue)}</strong>
-          <p>{isLoading ? "Loading payments…" : recovered + " payment" + (recovered === 1 ? "" : "s") + " successfully recovered"}</p>
-          <div className="simple-progress"><span><b>{recoveryRate}%</b> recovery rate</span><i><em style={{ width: recoveryRate + "%" }} /></i></div>
+          <span>Recovered — provably ours</span>
+          <strong>{ours ? paise(ours.amount_paise) : "—"}</strong>
+          <p>{isLoading ? "Loading payments…" : ours ? ours.sessions + " payment" + (ours.sessions === 1 ? "" : "s") + " Razorpay reported as paid on our link" : "No attribution data yet"}</p>
+          <div className="simple-progress">
+            <span><b>{ours ? share(ours.share_of_recovered, 0) : "—"}</b> of recovered rupees traced to our link</span>
+            <i><em style={{ width: (ours ? ours.share_of_recovered * 100 : 0) + "%" }} /></i>
+          </div>
         </article>
         <article className="simple-stat">
-          <span>Revenue at risk</span>
-          <strong>{isLoading ? "—" : money.format(atRisk)}</strong>
-          <p>Across payments that still need action</p>
+          <span>Still not recovered</span>
+          <strong>{stats ? paise(stats.unrecovered_paise) : "—"}</strong>
+          <p>{stats ? "Of " + paise(stats.at_risk_paise) + " in failed payments" : "Across payments that still need action"}</p>
         </article>
         <article className="simple-stat">
           <span>In progress</span>
-          <strong>{isLoading ? "—" : active}</strong>
-          <p>Recovery actions currently running</p>
+          <strong>{stats ? stats.open : "—"}</strong>
+          <p>Sessions still inside the recovery window</p>
         </article>
       </section>
 
       <section className="simple-process-section">
         <div className="simple-section-title">
           <div><p className="simple-eyebrow">HOW PAYREVIVE WORKS</p><h2>One clear path from failure to recovery.</h2></div>
-          <span className={isDemo ? "simple-data-badge sample" : "simple-data-badge"}>{isDemo ? "Showing sample data" : "Live data"}</span>
+          <span className={failure ? "simple-data-badge sample" : "simple-data-badge"}>{failure ? "API unreachable" : "Live data"}</span>
         </div>
         <ol className="simple-process">
           <li><b>1</b><div><strong>Detect a failed payment</strong><span>Capture payment, bank, error and customer context.</span></div></li>
@@ -130,6 +158,9 @@ export function Dashboard() {
               <ArrowUpRight />
             </Link>
           ))}
+          {!isLoading && !payments.length && !failure && (
+            <p className="simple-empty">No failed payments in the queue. Run a batch to generate some.</p>
+          )}
         </div>
       </section>
     </AppShell>

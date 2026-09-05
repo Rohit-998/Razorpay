@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/app-shell";
 import { Spark, Check, ArrowUpRight } from "../../components/icons";
+import { API_BASE_URL } from "../../lib/api";
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+// The base URL used to be derived here with `?? ""`, which resolves to the Next server's own
+// origin — so every request on this page went to `/api/v1/...` on port 3000, 404'd, and the
+// page reported the backend as down while the backend was running fine. One default, in
+// `lib/api.ts`, pointing at localhost:8000.
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 type StepState = "pending" | "running" | "complete" | "error";
