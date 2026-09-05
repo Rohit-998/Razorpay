@@ -1,7 +1,21 @@
 """PayRevive — Application configuration (env-based)."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+# `env_file` is resolved against the process's working directory, which made loading the
+# credentials depend on where you happened to be standing. `uvicorn app.main:app` has to be
+# run from `backend/`, `python -m app.eval` too, but the repository root is where a `.env`
+# naturally lands — and from `backend/` that file is invisible. The symptom is not a missing
+# key, it is `SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env` thrown by a
+# service whose `.env` exists and is correct one directory up.
+#
+# So both are named, absolutely, and pydantic reads them in order with the later winning:
+# repository root first, then `backend/.env` as the override the README tells you to create.
+_BACKEND = Path(__file__).resolve().parent.parent
+_REPO_ROOT = _BACKEND.parent
 
 
 class Settings(BaseSettings):
@@ -45,7 +59,10 @@ class Settings(BaseSettings):
     llm_confidence_threshold: float = 0.7
     llm_amount_threshold_paise: int = 1_000_000
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = {
+        "env_file": (str(_REPO_ROOT / ".env"), str(_BACKEND / ".env")),
+        "extra": "ignore",
+    }
 
 
 @lru_cache

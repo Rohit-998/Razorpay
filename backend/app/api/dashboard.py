@@ -23,7 +23,8 @@ different kinds of claim.
 
 from fastapi import APIRouter
 
-from app.db.database import get_supabase
+from app.db.database import get_supabase, select_all
+from app.execution import attribution
 
 router = APIRouter()
 
@@ -36,6 +37,30 @@ ATTRIBUTION_LABELS = {
     "CUSTOMER_SELF_RECOVERED": "Came back on their own — not ours",
     "AMBIGUOUS": "Paid soon after we messaged — unprovable either way",
 }
+
+UNATTRIBUTED_WHY = (
+    "No RECOVERY_OBSERVED event, so nothing decided this. Either the callback has not "
+    "arrived, or the row predates the attribution rule and its verdict column was written "
+    "by a coin flip."
+)
+
+
+def audit_backed_sessions() -> set[str]:
+    """Session ids whose attribution verdict an audit event stands behind.
+
+    One read, one place, shared by `/dashboard/stats` and `/metrics/batch` so the two cannot
+    disagree about which recoveries are claimable — they were both reading the `attribution`
+    column directly, and both reporting the legacy coin flips as wins.
+    """
+    return {
+        event["recovery_session_id"]
+        for event in select_all(
+            "audit_events",
+            "recovery_session_id",
+            event_type=attribution.OBSERVATION_EVENT,
+        )
+        if event.get("recovery_session_id")
+    }
 
 
 @router.get("/dashboard/stats")
@@ -50,37 +75,45 @@ async def get_stats():
     dashboard needs a percentage for its progress bar, and a percentage the browser derives
     is a percentage nobody reviewed. Its denominator is deliberately recovered rupees, not
     failed payments, which is the distinction the whole endpoint exists to keep.
+
+    A verdict is counted only where an audit event justifies it — see
+    `attribution.verdict_of`. Reading the column on its own had this endpoint reporting 100%
+    of recovered rupees as provably ours on 217 rows a deleted `random.random()` wrote, which
+    is the overclaim the rest of this file argues against.
     """
-    db = get_supabase()
-    sessions = (
-        db.table("recovery_sessions")
-        .select("status, amount_recovered, root_cause, attribution")
-        .execute()
+    rows = select_all(
+        "recovery_sessions", "id, status, amount_recovered, root_cause, attribution"
     )
-    rows = sessions.data or []
 
     by_status: dict[str, int] = {}
     for row in rows:
         status = row.get("status") or "UNKNOWN"
         by_status[status] = by_status.get(status, 0) + 1
 
+    observed = audit_backed_sessions()
+
     attributed = {
         verdict: {"label": ATTRIBUTION_LABELS[verdict], "sessions": 0, "amount_paise": 0}
         for verdict in ATTRIBUTION_ORDER
     }
-    # A recovered session with no attribution verdict yet is its own category rather than a
-    # silent zero: the webhook that decides causation may simply not have arrived.
-    unattributed = {"sessions": 0, "amount_paise": 0}
+    # A recovered session whose verdict no audit event backs is its own category rather
+    # than a silent zero, and rather than a claim. The webhook that decides causation may
+    # not have arrived yet, or — for the legacy rows — may never have run at all.
+    unattributed = {
+        "label": "Recovered, cause not established",
+        "sessions": 0,
+        "amount_paise": 0,
+        "why": UNATTRIBUTED_WHY,
+    }
     for row in rows:
         if row.get("status") != "RECOVERED":
             continue
         amount = row.get("amount_recovered") or 0
-        bucket = attributed.get(row.get("attribution")) or unattributed
+        bucket = attributed.get(attribution.verdict_of(row, observed)) or unattributed
         bucket["sessions"] += 1
         bucket["amount_paise"] += amount
 
-    payments = db.table("payments").select("amount").execute()
-    at_risk_paise = sum(p["amount"] for p in (payments.data or []))
+    at_risk_paise = sum(p["amount"] for p in select_all("payments", "amount"))
 
     # The one share worth putting on a dashboard, computed here so the browser does not have
     # to. Denominator is every rupee that came back, however it came back — so the figure
@@ -110,6 +143,23 @@ async def get_stats():
             "recovered_paise": recovered_paise,
             "share_of_recovered": (
                 round(ours_paise / recovered_paise, 4) if recovered_paise else 0.0
+            ),
+            # What the share is missing, so a low one can be read correctly. A 0% here means
+            # one of two very different things — nothing worked, or nothing was measured —
+            # and the dashboard cannot tell them apart from a percentage alone.
+            "unestablished_sessions": unattributed["sessions"],
+            "unestablished_paise": unattributed["amount_paise"],
+            "caveat": (
+                (
+                    f"{unattributed['sessions']} of "
+                    f"{unattributed['sessions'] + sum(b['sessions'] for b in attributed.values())} "
+                    "recoveries in this table have no attribution event, so they are "
+                    "excluded from the numerator rather than assumed to be ours. Run "
+                    "`python -m app.eval` for the measured figure, which does have a "
+                    "counterfactual."
+                )
+                if unattributed["sessions"]
+                else None
             ),
             "note": (
                 "Share of recovered rupees that Razorpay's webhook named our payment link "

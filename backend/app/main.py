@@ -95,12 +95,13 @@ app.add_middleware(
 # after the harness would shadow the builtin in this namespace.
 from app.api import (
     health, webhooks, batch, compliance, dashboard, payments, metrics, model, pipeline,
-    evaluation,
+    evaluation, sandbox,
 )
 
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(batch.router, prefix="/api/v1", tags=["Batch"])
+app.include_router(sandbox.router, prefix="/api/v1", tags=["Sandbox"])
 app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 app.include_router(compliance.router, prefix="/api/v1", tags=["Compliance"])
 app.include_router(payments.router, prefix="/api/v1", tags=["Payments"])

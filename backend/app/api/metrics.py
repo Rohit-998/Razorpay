@@ -16,8 +16,14 @@ in `/eval/causes`, where the simulator knows the answer.
 
 from fastapi import APIRouter
 
-from app.api.dashboard import ATTRIBUTION_LABELS, ATTRIBUTION_ORDER
-from app.db.database import get_supabase
+from app.api.dashboard import (
+    ATTRIBUTION_LABELS,
+    ATTRIBUTION_ORDER,
+    UNATTRIBUTED_WHY,
+    audit_backed_sessions,
+)
+from app.db.database import select_all
+from app.execution import attribution
 from app.strategy.bandit import bandit
 
 router = APIRouter()
@@ -26,9 +32,14 @@ router = APIRouter()
 @router.get("/metrics/batch")
 async def get_batch_report():
     """Closed sessions, split by attribution and by the cause the classifier predicted."""
-    db = get_supabase()
-    sessions = db.table("recovery_sessions").select("*").neq("status", "OPEN").execute()
-    data = sessions.data or []
+    data = [
+        row
+        for row in select_all(
+            "recovery_sessions", "id, status, amount_recovered, root_cause, attribution"
+        )
+        if row.get("status") != "OPEN"
+    ]
+    observed = audit_backed_sessions()
 
     def _empty() -> dict:
         return {
@@ -46,11 +57,13 @@ async def get_batch_report():
     for row in data:
         cause = row.get("root_cause") or "UNCLASSIFIED"
         bucket = by_predicted_cause.setdefault(cause, _empty())
+        # Same rule as the dashboard, through the same function: the column alone is not
+        # evidence, and this table used to count the legacy coin flips as wins too.
+        verdict = attribution.verdict_of(row, observed)
         for target in (overall, bucket):
             target["sessions"] += 1
             if row.get("status") == "RECOVERED":
                 target["amount_recovered_paise"] += row.get("amount_recovered") or 0
-                verdict = row.get("attribution")
                 if verdict in target["attributed"]:
                     target["attributed"][verdict] += 1
                 else:
@@ -65,6 +78,7 @@ async def get_batch_report():
         "overall": overall,
         "by_predicted_cause": by_predicted_cause,
         "attribution_labels": ATTRIBUTION_LABELS,
+        "unattributed_note": UNATTRIBUTED_WHY,
         "keyed_on": (
             "The cause the classifier predicted, not the true one — in production there is "
             "no other label available. Inference from the error fields alone is bounded at "

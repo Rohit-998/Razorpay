@@ -92,6 +92,39 @@ def attribute(
     )
 
 
+OBSERVATION_EVENT = "RECOVERY_OBSERVED"
+"""The audit event `webhooks.py` writes at the instant `attribute()` returns a verdict.
+
+Its presence is what makes the `attribution` column on a session mean anything. The column
+is a string, and a string can be written by anything — including, in this repo's own history,
+a `/batch/run` that called `random.random()`, decided the outcome itself, and stored the coin
+flip as `SYSTEM_RECOVERED`. That code is deleted. Its rows are still in the database: 217
+recovered sessions carrying a verdict no webhook ever decided, no `paid_at` was ever compared
+against, and no reason string can be produced for.
+
+So a verdict is read only where this event sits beside it. `verdict_of` is the one place that
+check is written, and both `/dashboard/stats` and `/metrics/batch` go through it, because an
+endpoint that skipped it would report the coin flips as provably ours — the precise overclaim
+this module exists to prevent."""
+
+
+def verdict_of(row: dict, observed: object) -> str | None:
+    """The verdict a recovered session may be counted under, or `None` if nothing decided it.
+
+    `observed` is any container of session ids that have an `OBSERVATION_EVENT` — passed in
+    rather than fetched, keeping this module free of the database for the reason the header
+    gives: a verdict has to be re-derivable from its own arguments months later.
+
+    Returning `None` is not the same as returning `AMBIGUOUS`. Ambiguous is a decision, made
+    by the clock, about a payment we can see: it says causation is unprovable. `None` says
+    nobody looked. The callers keep them in separate buckets.
+    """
+    verdict = row.get("attribution")
+    if verdict not in VERDICTS:
+        return None
+    return verdict if row.get("id") in observed else None
+
+
 def reward(verdict: str) -> float | None:
     """What the bandit is allowed to learn from an outcome, or `None` to learn nothing.
 

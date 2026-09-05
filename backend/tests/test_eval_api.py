@@ -26,7 +26,9 @@ import pytest
 from fastapi import HTTPException
 
 from app.api import dashboard, evaluation, metrics
+from app.db import database
 from app.eval.harness import PolicyOnScenario
+from app.execution import attribution
 
 REPORT = json.loads(evaluation.REPORT_PATH.read_text(encoding="utf-8"))
 """Read directly, so every assertion below compares the endpoint against the file rather
@@ -250,13 +252,14 @@ def test_the_shares_are_of_money_at_risk_not_of_payment_count() -> None:
 class _Chain:
     """Every Supabase call shape these two modules use, in one object.
 
-    `select().neq().execute()`, and `select().eq().order().limit().execute()`.
+    `select().eq().range().execute()` for the paged aggregate reads, and
+    `select().eq().order().limit().execute()` for the exception queue.
 
-    The filters really filter. A double that accepted `.neq("status", "OPEN")` and ignored it
-    would keep passing if someone deleted that call from the endpoint — and an open session
-    counted as a closed outcome is exactly the kind of quiet miscount these tests exist to
-    catch. `order` is a no-op because the fixture is already in the order the endpoint asks
-    for, which is the one thing here worth not pretending about.
+    The filters really filter. A double that accepted `.eq("event_type", ...)` and ignored it
+    would keep passing if someone deleted that call from the endpoint — and an unrelated audit
+    event mistaken for an attribution observation is exactly the kind of quiet miscount these
+    tests exist to catch. `order` is a no-op because the fixture is already in the order the
+    endpoint asks for, which is the one thing here worth not pretending about.
     """
 
     def __init__(self, rows: list[dict]) -> None:
@@ -277,6 +280,15 @@ class _Chain:
     def limit(self, count: int) -> "_Chain":
         return _Chain(self.data[:count])
 
+    def range(self, start: int, end: int) -> "_Chain":
+        """Inclusive at both ends, as PostgREST's is — `range(0, 999)` is a page of 1000.
+
+        Honoured rather than stubbed out, because `select_all` pages until it sees a short
+        page. A `range` that returned everything on every call would still terminate here,
+        and would hide a helper that loops forever against the real database.
+        """
+        return _Chain(self.data[start : end + 1])
+
     def execute(self) -> "_Chain":
         return self
 
@@ -291,25 +303,34 @@ class _FakeDB:
 
 SESSIONS = [
     # Two real wins: the customer paid on our link, and Razorpay named the link.
-    {"status": "RECOVERED", "amount_recovered": 500_00, "root_cause": "BANK_DOWNTIME",
-     "attribution": "SYSTEM_RECOVERED"},
-    {"status": "RECOVERED", "amount_recovered": 1_500_00, "root_cause": "AUTH_TIMEOUT",
-     "attribution": "SYSTEM_RECOVERED"},
+    {"id": "s_link_1", "status": "RECOVERED", "amount_recovered": 500_00,
+     "root_cause": "BANK_DOWNTIME", "attribution": "SYSTEM_RECOVERED"},
+    {"id": "s_link_2", "status": "RECOVERED", "amount_recovered": 1_500_00,
+     "root_cause": "AUTH_TIMEOUT", "attribution": "SYSTEM_RECOVERED"},
     # Would have paid anyway. A recovery rate counts this; nothing here does.
-    {"status": "RECOVERED", "amount_recovered": 9_000_00, "root_cause": "BANK_DOWNTIME",
-     "attribution": "CUSTOMER_SELF_RECOVERED"},
+    {"id": "s_self", "status": "RECOVERED", "amount_recovered": 9_000_00,
+     "root_cause": "BANK_DOWNTIME", "attribution": "CUSTOMER_SELF_RECOVERED"},
     # Paid 20 minutes after our message. Unprovable, and therefore not a win.
-    {"status": "RECOVERED", "amount_recovered": 4_000_00, "root_cause": "AUTH_TIMEOUT",
-     "attribution": "AMBIGUOUS"},
+    {"id": "s_ambiguous", "status": "RECOVERED", "amount_recovered": 4_000_00,
+     "root_cause": "AUTH_TIMEOUT", "attribution": "AMBIGUOUS"},
     # Recovered, but the webhook that decides causation has not arrived yet.
-    {"status": "RECOVERED", "amount_recovered": 700_00, "root_cause": "BANK_DOWNTIME",
-     "attribution": None},
-    {"status": "FAILED", "amount_recovered": 0, "root_cause": "PERMANENT_DECLINE",
-     "attribution": None},
-    {"status": "ESCALATED", "amount_recovered": 0, "root_cause": "MERCHANT_ERROR",
-     "attribution": None},
-    {"status": "OPEN", "amount_recovered": 0, "root_cause": None, "attribution": None},
+    {"id": "s_pending", "status": "RECOVERED", "amount_recovered": 700_00,
+     "root_cause": "BANK_DOWNTIME", "attribution": None},
+    # The row that made this fix necessary. Its verdict claims the strongest thing the
+    # system can say about a rupee, and no event anywhere justifies it — this is the shape
+    # of all 217 recoveries the deleted coin-flip batch runner left in the real database.
+    {"id": "s_legacy_coinflip", "status": "RECOVERED", "amount_recovered": 6_000_00,
+     "root_cause": "BANK_DOWNTIME", "attribution": "SYSTEM_RECOVERED"},
+    {"id": "s_failed", "status": "FAILED", "amount_recovered": 0,
+     "root_cause": "PERMANENT_DECLINE", "attribution": None},
+    {"id": "s_escalated", "status": "ESCALATED", "amount_recovered": 0,
+     "root_cause": "MERCHANT_ERROR", "attribution": None},
+    {"id": "s_open", "status": "OPEN", "amount_recovered": 0,
+     "root_cause": None, "attribution": None},
 ]
+
+OBSERVED = ["s_link_1", "s_link_2", "s_self", "s_ambiguous"]
+"""The sessions a `payment.captured` or `payment_link.paid` callback actually resolved."""
 
 
 @pytest.fixture()
@@ -330,10 +351,17 @@ def live(monkeypatch: pytest.MonkeyPatch) -> _FakeDB:
             {"event_type": "COMPLIANCE_REMEDY", "payment_id": "pay_3",
              "recovery_session_id": "s3", "created_at": "2026-03-25T03:00:00Z",
              "event_data": {"recommendation": "DEFER_TO_MORNING"}},
+        ] + [
+            {"event_type": attribution.OBSERVATION_EVENT, "payment_id": f"pay_{sid}",
+             "recovery_session_id": sid, "created_at": "2026-03-25T06:00:00Z",
+             "event_data": {"attribution": "recorded"}}
+            for sid in OBSERVED
         ],
     })
+    # Patched in `app.db.database` because that is where `select_all` looks it up; the
+    # per-module bindings below are the direct `get_supabase()` callers.
+    monkeypatch.setattr(database, "get_supabase", lambda: db)
     monkeypatch.setattr(dashboard, "get_supabase", lambda: db)
-    monkeypatch.setattr(metrics, "get_supabase", lambda: db)
     return db
 
 
@@ -371,11 +399,46 @@ def test_the_dashboard_credits_only_what_the_link_can_prove(live: _FakeDB) -> No
     assert served["SYSTEM_RECOVERED"]["sessions"] == 2
 
 
+def test_a_verdict_no_audit_event_backs_is_not_a_claim(live: _FakeDB) -> None:
+    """The regression test for the finding that held up the demo.
+
+    `s_legacy_coinflip` carries `attribution = SYSTEM_RECOVERED` on ₹6,000 and has no
+    observation event, because the code that wrote it decided the outcome with
+    `random.random()` rather than reading a callback. Trusting the column put every one of
+    those rows in the numerator: the live dashboard reported 100% of recovered rupees as
+    provably ours, which is both the strongest claim the system can make and, on that data,
+    entirely invented.
+
+    It has to land in `unattributed` rather than be dropped — the money did arrive, and a
+    row that vanishes from every bucket makes the totals stop adding up.
+    """
+    served = _run(dashboard.get_stats())
+    assert served["attributed"]["SYSTEM_RECOVERED"]["amount_paise"] == 2_000_00
+    assert served["unattributed"]["sessions"] == 2, "the pending one and the coin flip"
+    assert served["unattributed"]["amount_paise"] == 6_700_00
+    counted = sum(b["sessions"] for b in served["attributed"].values())
+    assert counted + served["unattributed"]["sessions"] == 6, "every recovery is in a bucket"
+
+
 def test_a_recovery_with_no_verdict_yet_is_its_own_category(live: _FakeDB) -> None:
     """Not folded into `SYSTEM_RECOVERED`, which would claim money we cannot attribute, and
     not into `AMBIGUOUS`, which is a verdict rather than the absence of one."""
     served = _run(dashboard.get_stats())
-    assert served["unattributed"] == {"sessions": 1, "amount_paise": 700_00}
+    assert served["unattributed"]["sessions"] == 2
+    assert "AMBIGUOUS" not in served["unattributed"]["label"]
+    assert "RECOVERY_OBSERVED" in served["unattributed"]["why"]
+
+
+def test_a_low_share_arrives_with_the_reason_it_is_low(live: _FakeDB) -> None:
+    """0% of recovered rupees means two different things — nothing worked, or nothing was
+    measured — and a progress bar cannot tell them apart. The caveat names which one, and is
+    absent when there is nothing to caveat."""
+    ours = _run(dashboard.get_stats())["provably_ours"]
+    assert ours["share_of_recovered"] == round(2_000_00 / 21_700_00, 4)
+    assert ours["unestablished_sessions"] == 2
+    assert ours["unestablished_paise"] == 6_700_00
+    assert "no attribution event" in ours["caveat"]
+    assert "python -m app.eval" in ours["caveat"]
 
 
 def test_the_dashboard_points_at_where_the_counterfactual_lives(live: _FakeDB) -> None:
@@ -392,7 +455,24 @@ def test_the_batch_metrics_no_longer_serve_a_recovery_rate(live: _FakeDB) -> Non
     assert "recovery_rate" not in _keys(served)
     assert served["overall"]["attributed"]["SYSTEM_RECOVERED"] == 2
     assert served["overall"]["closed_without_recovery"] == 2
-    assert served["batch_size"] == 7, "the OPEN session is not a closed outcome"
+    assert served["batch_size"] == 8, "the OPEN session is not a closed outcome"
+
+
+def test_the_batch_metrics_apply_the_same_audit_check_as_the_dashboard(
+    live: _FakeDB,
+) -> None:
+    """Two endpoints reading the same column had to agree, and they did not.
+
+    `/metrics/batch` counted the legacy coin flip as a third `SYSTEM_RECOVERED` while
+    `/dashboard/stats` counted two, so the same batch had two different numbers of provable
+    wins depending on which panel you opened. Both now go through `attribution.verdict_of`.
+    """
+    batch = _run(metrics.get_batch_report())["overall"]
+    stats = _run(dashboard.get_stats())
+    assert batch["attributed"]["SYSTEM_RECOVERED"] == (
+        stats["attributed"]["SYSTEM_RECOVERED"]["sessions"]
+    )
+    assert batch["unattributed"] == stats["unattributed"]["sessions"] == 2
 
 
 def test_the_per_cause_breakdown_says_the_label_is_a_prediction(live: _FakeDB) -> None:

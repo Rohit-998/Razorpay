@@ -154,6 +154,34 @@ def _recovered_reference(event: str, payload: dict) -> tuple[str | None, bool]:
     return entity.get("order_id"), False
 
 
+def _paid_at(payload: dict) -> datetime:
+    """When the processor says the money moved, not when we happened to read the message.
+
+    Razorpay stamps `created_at` on the entity in unix seconds. Using our receipt time
+    instead looks harmless and is not: the attribution verdict turns on the gap between the
+    payment and our last contact, measured against a six-hour window. A webhook delayed by a
+    retry queue, or replayed hours later from the dashboard, would widen that gap by however
+    long the delay was — quietly converting `AMBIGUOUS` outcomes into
+    `CUSTOMER_SELF_RECOVERED` ones and changing what the bandit learns.
+
+    Falls back to now when the field is absent, because a verdict with an approximate clock
+    still beats no verdict, and the reason string records the hours it turned on either way.
+    """
+    for node in ("payment_link", "payment"):
+        entity = payload.get("payload", {}).get(node, {}).get("entity", {})
+        stamp = entity.get("created_at")
+        if isinstance(stamp, (int, float)) and stamp > 0:
+            return datetime.utcfromtimestamp(float(stamp))
+        if isinstance(stamp, str) and stamp:
+            try:
+                return datetime.fromisoformat(stamp.replace("Z", "+00:00")).replace(
+                    tzinfo=None
+                )
+            except ValueError:
+                pass
+    return datetime.utcnow()
+
+
 async def _record_recovery(event: str, payload: dict) -> dict:
     """Close an open session with an observed outcome, then let the bandit learn from it.
 
@@ -197,7 +225,7 @@ async def _record_recovery(event: str, payload: dict) -> dict:
     if not is_new:
         return {"status": "duplicate", "payment_id": payment_id}
 
-    paid_at = datetime.utcnow()
+    paid_at = _paid_at(payload)
     last_contact = await _last_contact_at(payment_id)
     verdict, why = attribution.attribute(
         paid_at=paid_at, via_our_link=via_our_link, last_contact_at=last_contact
