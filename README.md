@@ -84,6 +84,24 @@ The report counts working instruments killed by our own retries as a share of th
 to be broken, so "recovered more money" cannot be bought with customers left worse off
 than if nothing had been done.
 
+## Which of the brief's directions this took, and which it did not
+
+The brief lists seven example directions. They are alternatives, not a checklist, and the
+bar underneath them asks for one loop measured end to end rather than seven demonstrated
+shallowly. Each additional direction would need its own counterfactual, its own compliance
+gates, its own stopping rules and its own audit events before it could count as *measured*
+money — so this submission took the first direction and went the whole way down it.
+
+| Direction | Here |
+| --- | --- |
+| Payment degradation → root cause → recovery action | **The spine.** Classifier over 7 causes with per-payment SHAP evidence, a policy that prices actions under a compliance veto, execution, audit trail, webhook attribution, and the measured lift above. |
+| Mandate retry sequencer | **Inside the decision.** `is_recurring` → `has_mandate` exempts autopay from the ₹10,000 auto-retry ceiling; 3 retries maximum, 15 minutes apart; and `payrevive` prices the 3.5% chance that each failed retry pauses the mandate, which is why it retries less than the incumbent and breaks fewer instruments. |
+| Failed-subscription recovery | **Half.** Mandate state and `mandate_expired` failures are modelled; there is no subscription object, billing cycle or dunning schedule. |
+| Checkout drop-off recovery | No. Every path here starts from a *failed payment*; abandoned checkouts emit no failure to diagnose. |
+| B2B receivables chaser | No. No invoices, no ageing, no promise objects. |
+| Hinglish voice recovery | No. Channel and tone are decision variables the bandit learns over; there is no voice channel and no language generation. |
+| Promise-to-pay tracker | No. `SCHEDULED_RETRY` and the 72-hour window are the nearest thing, and neither records a customer commitment. |
+
 ## The decision path
 
 Each stage exists because the one before it cannot answer the question.
@@ -197,7 +215,7 @@ backend/app/
   api/            FastAPI routes — webhooks, batch, dashboard, model
   audit/          append-only event store
   worker.py       ARQ pipeline: classify → decide → check → act, and honour the remedy
-backend/tests/    298 tests
+backend/tests/    367 tests
 backend/reports/  REPORT.md — regenerated, not written by hand
 frontend/         Next.js 14 dashboard (App Router, plain CSS)
 ```
@@ -221,12 +239,13 @@ The test suite:
 cd backend && python -m pytest tests/ -q
 ```
 
-298 tests, ~3 minutes. They are mostly not unit tests. They assert the properties the
+367 tests, ~3 minutes. They are mostly not unit tests. They assert the properties the
 measurement depends on: that the simulator's outcome never reads the label, that lift never
 exceeds attributed recovery, that the ambiguity window is identical on both sides, that
 `payrevive` takes no action the compliance engine would refuse, that every remedy the
-engine can recommend has somewhere in the worker to go, and that the classifier's accuracy
-is measured against the bound it has to beat rather than reported on its own.
+engine can recommend has somewhere in the worker to go, that a paged read of a table larger
+than PostgREST's row cap comes back whole and in a fixed order, and that the classifier's
+accuracy is measured against the bound it has to beat rather than reported on its own.
 
 The classifier is a separate fit, and it is not optional:
 
@@ -259,9 +278,45 @@ cd frontend && npm install && npm run dev
 Then: `POST /api/v1/batch/generate` to create synthetic failures,
 `POST /api/v1/model/train` to fit the classifier if `python -m app.ml.train` has not been run
 (same code path, and the worker silently classifies nothing without a model),
-`POST /api/v1/batch/run` to put every open session through the real pipeline. Sessions stay
-`OPEN` until Razorpay reports a capture or a paid link — outcomes are observed, never
+`POST /api/v1/batch/run?limit=15` to put open sessions through the real pipeline. Sessions
+stay `OPEN` until Razorpay reports a capture or a paid link — outcomes are observed, never
 assumed.
+
+`limit` bounds how many sessions one call works, and `0` means all of them. It exists
+because honest work is slow work: every payment costs a classifier call, a compliance read,
+a bandit read, an action and several audit inserts, each a round trip to a hosted database.
+A measured run over 137 open sessions took **434.7 seconds**; fifteen takes about 22. The
+response carries `open_at_start` and `not_worked_this_run` and the dashboard prints the
+second one, because `processed: 15` on a queue of 97 reads exactly like a finished batch.
+
+Two endpoints exist for reading the run rather than triggering it.
+`GET /api/v1/compliance/policy` serves the limits the engine enforces, each with the reason
+it exists, so the stopping rules can be read without reading the source.
+`GET /api/v1/dashboard/exceptions` is the queue of payments the system stopped working and
+why — a compliance block with no reachable remedy, an execution failure, or an exhausted
+gateway allowance. `POST /api/v1/sandbox/outcomes` delivers the callbacks Razorpay's test
+mode never sends, and refuses to run when `APP_ENV=production`, because a tool that
+fabricates outcomes must not be reachable where outcomes are real.
+
+### What a test key runs out of
+
+Razorpay's test mode allows **30 payment links per account for the lifetime of the
+account**, and refuses the 31st with `429` — the same status it uses for "you are going too
+fast". Two consequences, both handled:
+
+- The retry loop used to treat it as a throttle and spend four attempts and eight seconds of
+  backoff per payment on an answer that could never change. `is_quota_exhausted` tells the
+  two apart on the response description, narrowly enough that a genuine throttle is still
+  retried, and the executor files an exhausted allowance as `GATEWAY_QUOTA_EXHAUSTED`
+  rather than `EXECUTION_ERROR` — a credential that has run out, not a bug in the code.
+- `PAYMENT_LINK_SENT` is the only audit event that can produce a `SYSTEM_RECOVERED` verdict,
+  so once the allowance is gone the live `provably_ours` figure stops moving. On this key it
+  is 5 sessions. That is a fact about the credential, which is exactly why the headline
+  number comes from the eval harness, where a counterfactual exists.
+
+Writes are also spaced 0.4 s apart under a lock. Before that, a batch of forty link
+creations arrived inside four seconds and Razorpay answered `429` to nearly all of them —
+silently, since the client returned `None` and the run still reported success.
 
 ## Known limitations
 
@@ -281,8 +336,17 @@ edges of the work rather than the things it hides.
   reported rather than hidden.
 - **Per-issuer card ceilings are unobservable**, so no ceiling is enforced on cards or
   netbanking. UPI's ₹1 lakh is enforced because NPCI publishes it.
-- **The dashboard has not yet been rebuilt** against the new metrics — it reads the live
-  API, not `REPORT.md`.
+- **The live dashboard cannot show a lift, and does not pretend to.** It separates recoveries
+  into paid-on-our-link, came-back-on-their-own and cause-not-established, and reports the
+  share only over the sessions whose cause an audit event establishes — 217 legacy rows are
+  excluded from the numerator rather than assumed to be ours. The measured figure lives on
+  `/analytics`, from the harness, because a lift needs a twin batch that production does not
+  run.
+- **A total read from one page is a wrong number wearing the right label.** PostgREST caps an
+  unbounded `select()` at 1,000 rows and returns the truncated set with no error; a census of
+  this project's 1,158 `audit_events` summed to exactly 1,000 before it was fixed. Reads page
+  now, and every page names a sort column, because `LIMIT/OFFSET` over an unordered scan can
+  return the same row twice or skip it.
 
 ## Stack
 
