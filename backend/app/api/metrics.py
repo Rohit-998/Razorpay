@@ -67,9 +67,10 @@ async def get_batch_report():
         "attribution_labels": ATTRIBUTION_LABELS,
         "keyed_on": (
             "The cause the classifier predicted, not the true one — in production there is "
-            "no other label available. Accuracy against the true cause is bounded at 65.78% "
-            "for error-fields-only inference, so treat a row on a confusable cause as a "
-            "mixture. The true-cause breakdown is at /api/v1/eval/causes."
+            "no other label available. Inference from the error fields alone is bounded at "
+            "68.38% under the cause mix these batches have (65.78% under a uniform prior), "
+            "so treat a row on a confusable cause as a mixture rather than a population. "
+            "The true-cause breakdown is at /api/v1/eval/causes."
         ),
     }
 

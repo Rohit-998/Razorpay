@@ -134,7 +134,10 @@ def test_nothing_else_in_the_codebase_decides_attribution() -> None:
                 isinstance(b, ast.Name) and b.id == "Enum" for b in node.bases
             ):
                 declarations.update(
-                    child.lineno for stmt in node.body for child in ast.walk(stmt)
+                    child.lineno
+                    for stmt in node.body
+                    for child in ast.walk(stmt)
+                    if hasattr(child, "lineno")
                 )
 
         for node in ast.walk(tree):

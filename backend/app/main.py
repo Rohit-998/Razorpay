@@ -43,17 +43,45 @@ app = FastAPI(
 
 from fastapi.responses import JSONResponse
 import traceback
+import uuid
 from fastapi import Request
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error("unhandled_exception", error=str(exc), traceback=traceback.format_exc())
+    """Log the traceback, return a reference to it.
+
+    This used to put `traceback.format_exc()` in the response body. With `allow_origins=["*"]`
+    below, that hands any caller the absolute paths of the source tree, the frame locals'
+    surrounding code, and the names of internal modules — which is a free map of the service
+    for anyone probing it, and it is served on the error path, where probing lands.
+
+    The traceback still goes to the log in full, keyed by an id the caller is given, so
+    debugging a real failure is a grep rather than a guess.
+    """
+    incident = uuid.uuid4().hex[:12]
+    logger.error(
+        "unhandled_exception",
+        incident=incident,
+        path=request.url.path,
+        error=str(exc),
+        traceback=traceback.format_exc(),
+    )
     return JSONResponse(
         status_code=500,
-        content={"status": "error", "message": str(exc), "traceback": traceback.format_exc()}
+        content={
+            "status": "error",
+            "message": "the request failed inside the service",
+            "incident": incident,
+            "where_to_look": f"search the server log for incident={incident}",
+        },
     )
 
-# CORS — allow all origins for buildathon demo
+
+# CORS — open, because the dashboard is served from a different origin in every
+# environment this runs in and none of these endpoints accept credentials. Note the
+# combination this forms with the handler above: an open origin policy plus a verbose
+# error body is how a stack trace becomes public, which is why the body is terse.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
