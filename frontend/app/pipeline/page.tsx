@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/app-shell";
 import { Spark, ArrowUpRight } from "../../components/icons";
-import { API_BASE_URL, getStats, type DashboardStats } from "../../lib/api";
+import { API_BASE_URL, BATCH_SLICE, getStats, type DashboardStats } from "../../lib/api";
 import { paise, share } from "../../lib/format";
 
 // The base URL used to be derived here with `?? ""`, which resolves to the Next server's own
@@ -138,7 +138,12 @@ export default function PipelinePage() {
     const ok2 = await runStep("/api/v1/model/train", setTrainState, setTrainResults);
     if (!ok2) return;
 
-    const ok3 = await runStep("/api/v1/batch/run", setRecoverState, setBatchResults);
+    // Bounded, for the same reason the overview's button is. Every payment here costs a
+    // classifier call, a compliance read, a bandit read, an action and several audit inserts,
+    // each a round trip to a hosted database — a measured run over the whole open queue took
+    // 435 seconds. The response carries `not_worked_this_run`, and the JSON panel below shows
+    // it, so the slice is on screen rather than implied.
+    const ok3 = await runStep(`/api/v1/batch/run?limit=${BATCH_SLICE}`, setRecoverState, setBatchResults);
     if (!ok3) return;
 
     // Step three takes actions and stops there, because deciding the outcome is what the
@@ -363,7 +368,7 @@ export default function PipelinePage() {
               <b>{recoverState === "complete" ? "✓" : "3"}</b>
               <div>
                 <strong>Run batch recovery</strong>
-                <span>{recoverState === "running" ? "Processing failed payments…" : recoverState === "complete" && batchResults ? `Actions taken — ${((batchResults as Record<string, unknown>).results as Record<string, unknown>)?.processed ?? 0} payments worked, none closed yet` : recoverState === "error" ? "Recovery failed" : "Classifies, checks compliance, and takes one action per payment"}</span>
+                <span>{recoverState === "running" ? `Working the ${BATCH_SLICE} oldest open payments…` : recoverState === "complete" && batchResults ? `Actions taken — ${((batchResults as Record<string, unknown>).results as Record<string, unknown>)?.processed ?? 0} payments worked, none closed yet${(batchResults as Record<string, unknown>).not_worked_this_run ? `, ${(batchResults as Record<string, unknown>).not_worked_this_run} left in the queue` : ""}` : recoverState === "error" ? "Recovery failed" : `Classifies, checks compliance, and takes one action per payment — ${BATCH_SLICE} per run, oldest first`}</span>
               </div>
             </li>
             <li className={stepClass(observeState)}>
