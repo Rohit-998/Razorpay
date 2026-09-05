@@ -415,10 +415,20 @@ export type BatchRunResult = {
   message?: string;
   processed?: number;
   recovered?: number;
+  open_at_start?: number;
+  not_worked_this_run?: number;
+  results?: { total: number; processed: number; errored: number };
   [key: string]: unknown;
 };
 
-export const runBatch = () => post<BatchRunResult>("/batch/run");
+// Bounded, because the pipeline is network-bound and honest about it. Each payment costs a
+// classifier call, a compliance read, a bandit read, an action and several audit inserts —
+// every one a round trip to a hosted database — and a measured run over 137 open sessions took
+// 435 seconds. Nobody watches a button for seven minutes, and the alternative to a slice is
+// the version of this that returned instantly because it invented the answers. The response
+// carries `not_worked_this_run` and the notice below says the number out loud.
+export const BATCH_SLICE = 15;
+export const runBatch = () => post<BatchRunResult>(`/batch/run?limit=${BATCH_SLICE}`);
 export const generateBatch = () => post<Record<string, unknown>>("/batch/generate");
 
 export type SandboxOutcomes = {

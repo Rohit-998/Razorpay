@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "./app-shell";
 import { ArrowUpRight, Check, Spark } from "./icons";
 import {
+  BATCH_SLICE,
   deliverOutcomes,
   getPayments,
   getStats,
   runBatch,
+  type BatchRunResult,
   type DashboardStats,
   type Failure,
   type PaymentSummary,
@@ -51,6 +53,7 @@ export function Dashboard() {
   const [failure, setFailure] = useState<Failure | null>(null);
   const [batchState, setBatchState] = useState<"idle" | "running" | "complete" | "error">("idle");
   const [batchResult, setBatchResult] = useState<SandboxOutcomes | null>(null);
+  const [batchRun, setBatchRun] = useState<BatchRunResult | null>(null);
   const [batchError, setBatchError] = useState<Failure | null>(null);
 
   const loadPayments = useCallback(async () => {
@@ -74,6 +77,7 @@ export function Dashboard() {
   async function handleBatchRun() {
     setBatchState("running");
     setBatchResult(null);
+    setBatchRun(null);
     setBatchError(null);
     const result = await runBatch();
     if (!result.ok) {
@@ -81,6 +85,7 @@ export function Dashboard() {
       setBatchState("error");
       return;
     }
+    setBatchRun(result.data);
     const observed = await deliverOutcomes();
     if (!observed.ok) {
       setBatchError(observed.error);
@@ -116,8 +121,8 @@ export function Dashboard() {
 
       {batchState !== "idle" && (
         <div className={"simple-notice " + (batchState === "error" ? "error" : "")} role="status">
-          {batchState === "running" && <><span className="spinner" /> Analysing payments, selecting recovery actions, and waiting for outcomes…</>}
-          {batchState === "complete" && <><Check /> Batch complete{batchResult?.verdicts ? " — " + (batchResult.verdicts.SYSTEM_RECOVERED ?? 0) + " paid on our link, " + (batchResult.verdicts.CUSTOMER_SELF_RECOVERED ?? 0) + " came back on their own, " + (batchResult.verdicts.AMBIGUOUS ?? 0) + " unprovable" : "."}</>}
+          {batchState === "running" && <><span className="spinner" /> Working the {BATCH_SLICE} oldest open payments — classifying, checking compliance, acting, then waiting for outcomes. Around a second per payment against the hosted database.</>}
+          {batchState === "complete" && <><Check /> Batch complete{batchResult?.verdicts ? " — " + (batchResult.verdicts.SYSTEM_RECOVERED ?? 0) + " paid on our link, " + (batchResult.verdicts.CUSTOMER_SELF_RECOVERED ?? 0) + " came back on their own, " + (batchResult.verdicts.AMBIGUOUS ?? 0) + " unprovable" : "."}{batchRun?.not_worked_this_run ? ". " + batchRun.not_worked_this_run + " open payments were left for the next run" : ""}</>}
           {batchState === "error" && <>{batchError?.message ?? "Could not run the recovery batch."}{batchError?.fix ? " Run: " + batchError.fix : ""}</>}
         </div>
       )}

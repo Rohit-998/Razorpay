@@ -83,8 +83,8 @@ async def generate_synthetic_data(count: int = 150, duration_days: int = 7):
 
 
 @router.post("/batch/run")
-async def run_batch_pipeline():
-    """Run the real recovery pipeline on every OPEN session.
+async def run_batch_pipeline(limit: int = 0):
+    """Run the real recovery pipeline on the open sessions, oldest first.
 
     This delegates to `worker.process_failed_payment`, the same function the webhook
     queues on live traffic. It used to be a second, parallel implementation of the
@@ -104,12 +104,29 @@ async def run_batch_pipeline():
     `payment.captured` and `payment_link.paid` webhooks, which is where attribution and
     the bandit update live. A session left `OPEN` after this endpoint runs has not
     failed; it is a payment with an action taken and no answer yet.
+
+    `limit` bounds how many sessions this call works; `0` means all of them. It exists
+    because the pipeline is network-bound on a hosted database — a classifier call, a
+    compliance read, a bandit read, an action and several audit inserts, each a round trip —
+    and a measured run of 137 sessions took 435 seconds. That is the honest cost of doing
+    the real work per payment rather than a coin flip, and it is also longer than anybody
+    watching a demo will wait. The slice is the oldest sessions rather than an arbitrary
+    page, and the response says how many were left, because a partial run reported as a
+    finished one is the class of claim this file exists to stop making.
     """
     from app.worker import process_failed_payment
 
-    open_sessions = select_all("recovery_sessions", "payment_id", status="OPEN")
+    # Oldest first, so a bounded run works the payments that have been waiting longest
+    # instead of whichever UUIDs happen to sort low.
+    open_sessions = select_all(
+        "recovery_sessions", "payment_id", status="OPEN", order_by="created_at"
+    )
     if not open_sessions:
         return {"status": "no_data", "message": "No open recovery sessions found."}
+
+    queued = len(open_sessions)
+    if limit > 0:
+        open_sessions = open_sessions[:limit]
 
     results = {"total": len(open_sessions), "processed": 0, "errored": 0}
     for session in open_sessions:
@@ -136,6 +153,10 @@ async def run_batch_pipeline():
     return {
         "status": "complete",
         "results": results,
+        # What was open when the run started, and what this call chose not to touch. A run
+        # over a slice has to say so; `processed: 15` on its own reads as a finished batch.
+        "open_at_start": queued,
+        "not_worked_this_run": queued - len(open_sessions),
         "sessions_by_status": counts,
         "note": (
             "Recovery outcomes are not decided here. Sessions stay OPEN until Razorpay "

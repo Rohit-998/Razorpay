@@ -44,6 +44,14 @@ class _Chain:
     def eq(self, column: str, value) -> "_Chain":
         return _Chain([r for r in self.data if r.get(column) == value])
 
+    def order(self, column: str, **_k) -> "_Chain":
+        # `select_all` names a sort column on every page, because `LIMIT/OFFSET` over an
+        # unordered scan can hand back the same row twice. NULLs sort last, as Postgres does
+        # by default, so a fixture that omits the column is ordered rather than a TypeError.
+        return _Chain(
+            sorted(self.data, key=lambda r: (r.get(column) is None, r.get(column)))
+        )
+
     def range(self, start: int, end: int) -> "_Chain":
         return _Chain(self.data[start : end + 1])
 

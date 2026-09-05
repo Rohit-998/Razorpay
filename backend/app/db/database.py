@@ -27,7 +27,12 @@ def get_supabase() -> Client:
 
 
 def select_all(
-    table: str, columns: str, *, page_size: int = 1000, **filters: str
+    table: str,
+    columns: str,
+    *,
+    page_size: int = 1000,
+    order_by: str = "id",
+    **filters: str,
 ) -> list[dict]:
     """Every row of `table`, paged, because PostgREST caps an unbounded select.
 
@@ -43,6 +48,16 @@ def select_all(
 
     `filters` are applied as equality filters, server side, so the cap is spent on rows
     that matter instead of on rows that are discarded locally.
+
+    `order_by` is not cosmetic and is not optional. `range()` is `LIMIT/OFFSET`, and
+    `LIMIT/OFFSET` over an unordered query is undefined: Postgres makes no promise that two
+    scans return rows in the same sequence, so a row can appear on page one, get returned
+    again on page two, or be skipped by both. Concurrent writes make it likelier — an
+    arriving webhook updates a session while the pages are being fetched — and it fails
+    exactly the way the unpaged version did, by producing a total that is quietly wrong.
+    Every table here has a UUID primary key, so `id` is a valid tiebreak on all of them; a
+    caller that cares which rows come first, rather than only that all of them do, passes
+    something meaningful instead.
     """
     db = get_supabase()
     rows: list[dict] = []
@@ -51,7 +66,10 @@ def select_all(
         query = db.table(table).select(columns)
         for column, value in filters.items():
             query = query.eq(column, value)
-        page = query.range(offset, offset + page_size - 1).execute().data or []
+        page = (
+            query.order(order_by).range(offset, offset + page_size - 1).execute().data
+            or []
+        )
         rows.extend(page)
         # A short page is the last page. An exactly-full final page costs one extra
         # round trip that comes back empty, which is the cheap half of the trade.

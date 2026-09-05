@@ -539,3 +539,102 @@ def test_writes_are_spaced_so_a_batch_does_not_arrive_as_a_burst(
     client._last_write = 100.0  # a write just happened
     _run(client._space_out())
     assert waited == [pytest.approx(client_module.MIN_INTERVAL_SECONDS)]
+
+
+# ── The 429 that is not a rate limit ──────────────────────────────────────────
+#
+# Razorpay's test mode allows thirty payment links per account, ever, and answers the
+# thirty-first with 429 — the same status it uses for "you are going too fast". The retry above
+# was therefore spending four attempts and eight seconds of backoff per payment on an answer
+# that cannot change, and filing the result as `EXECUTION_ERROR`, which reads as a bug in the
+# executor rather than a credential that has run out. This was found on live traffic: the
+# exception ledger held `no payment link: Razorpay answered 429: test mode limit of 30 reached
+# for payment_link (gave up after 4 attempts)`, and it is the reason `provably_ours` stops
+# moving on a sandbox key no matter how many batches are run.
+
+
+def test_an_exhausted_allowance_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One attempt, because the thirty-first link is refused exactly as the thirty-fourth is.
+
+    The retry budget exists for a throttle that lifts. Spending it here delays every remaining
+    payment in the batch to arrive at the same refusal.
+    """
+    client = client_module.RazorpayClient()
+    calls = _serving(
+        [_Reply(429, {"error": {"description": "test mode limit of 30 reached for payment_link"}})],
+        monkeypatch,
+    )
+    link, refusal = _link(client)
+    assert link is None
+    assert calls == [429], "asked once, because asking again cannot change the answer"
+    assert refusal.startswith(client_module.QUOTA_PREFIX)
+    assert "test mode limit of 30" in refusal, "Razorpay's own sentence survives"
+    assert "gave up after" not in refusal, "it did not give up; it was told no"
+
+
+def test_a_real_throttle_is_still_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The other half, and the one that would hurt if the match were loose.
+
+    `Too many requests` clears in a second. Reading it as a permanent refusal would drop links
+    that a one-second pause would have created — and `PAYMENT_LINK_SENT` is the only event that
+    can produce a provable recovery, so each one dropped is a recovery the system cannot claim.
+    """
+    client = client_module.RazorpayClient()
+    calls = _serving(
+        [
+            _Reply(429, {"error": {"description": "Too many requests"}}),
+            _Reply(200, {"id": "plink_real", "short_url": "https://x"}),
+        ],
+        monkeypatch,
+    )
+    link, refusal = _link(client)
+    assert refusal is None and link["id"] == "plink_real"
+    assert calls == [429, 200]
+
+
+def test_the_quota_test_only_fires_on_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 503 whose body happens to mention a limit is an outage, not an allowance. The check is
+    scoped to the status code that is actually ambiguous."""
+    assert client_module.is_quota_exhausted(429, "test mode limit of 30 reached")
+    assert not client_module.is_quota_exhausted(503, "test mode limit of 30 reached")
+    assert not client_module.is_quota_exhausted(429, "Too many requests")
+
+
+def test_an_exhausted_allowance_is_filed_under_its_own_name(
+    acted: _Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The category is the point. `EXECUTION_ERROR` on 700 sessions says this code is broken;
+    `GATEWAY_QUOTA_EXHAUSTED` says the key has spent its thirty links and the provable path is
+    closed until a live key replaces it. One is a bug report, the other is a fact about the
+    environment, and the demo has to be able to say which it is looking at."""
+    async def spent(**_kwargs):
+        return None, f"{client_module.QUOTA_PREFIX}: test mode limit of 30 reached"
+
+    monkeypatch.setattr(client_module.razorpay_client, "create_payment_link", spent)
+    assert not _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(RecoveryStrategy.LINK_SAME_METHOD)
+        )
+    )
+    assert acted.contacts == [], "no link means no contact charged against the customer"
+    reason, category = acted.exceptions[-1][0], acted.exceptions[-1][1]
+    assert category == "GATEWAY_QUOTA_EXHAUSTED"
+    assert "test mode limit of 30" in reason
+
+
+def test_an_ordinary_execution_failure_keeps_the_ordinary_category(
+    acted: _Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The new category must not swallow the old one — a persistent throttle is still an
+    execution error, and calling it a spent allowance would tell a reviewer to change
+    credentials when what they need to do is slow down."""
+    async def throttled(**_kwargs):
+        return None, "Razorpay answered 429: Too many requests (gave up after 4 attempts)"
+
+    monkeypatch.setattr(client_module.razorpay_client, "create_payment_link", throttled)
+    _run(
+        executor_module.executor.execute(
+            _payment(), "sess-1", _decision(RecoveryStrategy.LINK_SAME_METHOD)
+        )
+    )
+    assert acted.exceptions[-1][1] == "EXECUTION_ERROR"

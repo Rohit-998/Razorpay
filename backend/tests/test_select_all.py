@@ -28,27 +28,66 @@ class _Chain:
 
     `range()` is inclusive at both ends, as the real one is, and every call is recorded so a
     test can assert how many round trips a read cost.
+
+    It also models the half of `LIMIT/OFFSET` that is easy to forget: an unordered scan makes
+    no promise about sequence. Ask for rows 0-999 and then 1000-1999 without an `ORDER BY` and
+    Postgres is free to hand back a different arrangement each time, so a row can arrive twice
+    or not at all. The double reproduces that by rotating its rows once per unordered read —
+    deterministically, so a failure is reproducible rather than flaky. `order()` pins the
+    sequence and the rotation stops.
     """
 
-    def __init__(self, rows: list[dict], calls: list[tuple[int, int]], cap: int) -> None:
+    def __init__(
+        self,
+        rows: list[dict],
+        calls: list[tuple[int, int]],
+        cap: int,
+        ordered_by: list[str],
+        ordered: bool = False,
+    ) -> None:
         self.data = rows
         self.calls = calls
         self.cap = cap
+        self.ordered_by = ordered_by
+        self.ordered = ordered
+
+    def _child(self, rows: list[dict], ordered: bool | None = None) -> "_Chain":
+        return _Chain(
+            rows,
+            self.calls,
+            self.cap,
+            self.ordered_by,
+            self.ordered if ordered is None else ordered,
+        )
 
     def select(self, *_a, **_k) -> "_Chain":
         return self
 
     def eq(self, column: str, value) -> "_Chain":
-        return _Chain(
-            [r for r in self.data if r.get(column) == value], self.calls, self.cap
+        return self._child([r for r in self.data if r.get(column) == value])
+
+    def order(self, column: str, **_k) -> "_Chain":
+        self.ordered_by.append(column)
+        # NULLs last, as Postgres orders them by default, so a fixture that does not carry the
+        # column sorts rather than raising — the parameter is about sequence, not about
+        # requiring every caller to select every column it sorts on.
+        return self._child(
+            sorted(self.data, key=lambda r: (r.get(column) is None, r.get(column))),
+            ordered=True,
         )
 
     def range(self, start: int, end: int) -> "_Chain":
         self.calls.append((start, end))
-        window = self.data[start : end + 1]
+        rows = self.data
+        if not self.ordered:
+            # A different arrangement on every scan, which is what the real thing is allowed
+            # to do and what makes an unordered paged read return the wrong population.
+            shift = len(self.calls) % max(len(rows), 1)
+            rows = rows[shift:] + rows[:shift]
+        window = rows[start : end + 1]
         # The cap applies to whatever the window asked for, which is what makes an
         # unbounded read silently partial rather than loud.
-        return _Chain(window[: self.cap], self.calls, self.cap)
+        return self._child(window[: self.cap])
 
     def execute(self) -> "_Chain":
         return self
@@ -58,10 +97,11 @@ class _FakeDB:
     def __init__(self, rows: list[dict], cap: int) -> None:
         self.rows = rows
         self.calls: list[tuple[int, int]] = []
+        self.ordered_by: list[str] = []
         self.cap = cap
 
     def table(self, _name: str) -> _Chain:
-        return _Chain(self.rows, self.calls, self.cap)
+        return _Chain(self.rows, self.calls, self.cap, self.ordered_by)
 
 
 @pytest.fixture()
@@ -75,7 +115,12 @@ def fake(monkeypatch: pytest.MonkeyPatch):
 
 
 def _rows(count: int, **extra) -> list[dict]:
-    return [{"id": f"r{i}", "amount": 100, **extra} for i in range(count)]
+    # `created_at` descends as the index rises, so a test that asks for the oldest first gets a
+    # sequence it can tell apart from insertion order.
+    return [
+        {"id": f"r{i}", "amount": 100, "created_at": f"2026-09-{(count - i) % 28 + 1:02d}", **extra}
+        for i in range(count)
+    ]
 
 
 def test_a_population_larger_than_the_cap_comes_back_whole(fake) -> None:
@@ -139,3 +184,33 @@ def test_paging_is_not_hardcoded_to_the_supabase_default(fake) -> None:
     db = fake(_rows(120), cap=50)
     assert len(database.select_all("audit_events", "id", page_size=50)) == 120
     assert db.calls == [(0, 49), (50, 99), (100, 149)]
+
+
+def test_every_page_is_asked_for_in_a_fixed_order(fake) -> None:
+    """`range()` is `LIMIT/OFFSET`, and offsets into an unordered result mean nothing.
+
+    Two pages, two scans, and nothing obliging the second scan to arrange rows the way the
+    first one did — so a row lands on both pages or on neither, and the census that comes out
+    is wrong in a way no assertion about *length* would catch if the pages happened to add up.
+    The fix is one clause, so the test is here to keep it: every read names a sort column, and
+    it is the primary key, which every table in `migrations/init.sql` has.
+    """
+    db = fake(_rows(1158))
+    got = database.select_all("audit_events", "id")
+
+    assert db.ordered_by == ["id", "id"], "one ORDER BY per page, not one per read"
+    assert len({r["id"] for r in got}) == 1158, "no row fetched twice, none skipped"
+
+
+def test_a_caller_can_say_which_rows_come_first(fake) -> None:
+    """Ordering by the key is enough to make paging correct and is not always enough to make
+    it *useful*: `/batch/run` works a slice of the open sessions and wants the oldest, not
+    fifteen arbitrary UUIDs. The parameter is the difference between a defensible queue
+    discipline and a coin flip over which payments get worked."""
+    db = fake(_rows(20))
+    got = database.select_all("recovery_sessions", "payment_id", order_by="created_at")
+
+    assert db.ordered_by == ["created_at"]
+    # `_rows` dates descend as the index rises, so the oldest row is the last one inserted —
+    # a sequence that insertion order alone could not have produced.
+    assert [r["id"] for r in got[:3]] == ["r19", "r18", "r17"]

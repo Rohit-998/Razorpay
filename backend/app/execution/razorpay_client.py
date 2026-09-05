@@ -27,6 +27,37 @@ malformed request and sending it again just spends another slot on the same reje
 
 _RETRYABLE = (429, 500, 502, 503, 504)
 
+QUOTA_PREFIX = "Razorpay test-mode payment-link allowance is used up"
+"""How an exhausted allowance is reported, so it can be told apart from a bug in this client.
+
+It is the single most consequential line in the exception ledger on a sandbox key. `PAYMENT_LINK_SENT`
+is the only audit event that can produce a `SYSTEM_RECOVERED` verdict, so once the allowance is gone
+the provable-recovery path is closed for the rest of the account's life and the dashboard's
+`provably_ours` figure stops moving. That is a fact about the credentials, not a result — and a
+reviewer reading `EXECUTION_ERROR` would reasonably conclude the executor is broken.
+"""
+
+_QUOTA_MARKERS = ("test mode limit", "limit of", "quota", "allowance")
+
+
+def is_quota_exhausted(status: int, detail: str) -> bool:
+    """Whether a 429 is an exhausted allowance rather than a rate limit.
+
+    Razorpay uses one status code for both. `Too many requests` clears in a second; `test mode
+    limit of 30 reached for payment_link` never clears, because it counts links created for the
+    lifetime of the account rather than links created recently. Retrying the second is four
+    round trips and eight seconds of backoff spent on an answer that cannot change.
+
+    Matched on the description because there is no distinguishing code in the response. The
+    markers are deliberately narrow — a bare "reached" or "exceeded" would catch a per-second
+    limit too, and treating a real throttle as permanent would drop links that a one-second
+    pause would have created.
+    """
+    if status != 429:
+        return False
+    said = detail.lower()
+    return any(marker in said for marker in _QUOTA_MARKERS)
+
 
 class RazorpayClient:
     """Client for interacting with Razorpay API."""
@@ -143,6 +174,20 @@ class RazorpayClient:
                     detail=detail,
                 )
                 return None, f"Razorpay rejected the link ({response.status_code}): {detail}"
+
+            # A 429 that will never clear. Razorpay's test mode allows thirty payment links per
+            # account in total, and answers the thirty-first with the same status code it uses
+            # for "you are going too fast" — so the retry loop treated an exhausted allowance as
+            # a throttle and spent four attempts and eight seconds per payment on a refusal that
+            # cannot succeed. On a fifteen-payment demo that is most of the wall clock, and the
+            # ledger recorded it as an execution error, which reads like a bug in this code.
+            if is_quota_exhausted(response.status_code, detail):
+                logger.error(
+                    "razorpay.payment_link_quota_exhausted",
+                    reference_id=reference_id,
+                    detail=detail,
+                )
+                return None, f"{QUOTA_PREFIX}: {detail}"
 
             last_reason = f"Razorpay answered {response.status_code}: {detail}"
             if attempt == MAX_ATTEMPTS:

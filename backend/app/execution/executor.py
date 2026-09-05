@@ -2,7 +2,7 @@
 
 from app.models.schemas import FailedPayment, RecoveryDecision, RecoveryStrategy
 from app.audit.event_store import event_store
-from app.execution.razorpay_client import razorpay_client
+from app.execution.razorpay_client import QUOTA_PREFIX, razorpay_client
 from app.execution.compliance import compliance_engine
 from app.queue import enqueue
 import structlog
@@ -93,11 +93,19 @@ class RecoveryExecutor:
                 # the first of those is a throttle a reviewer can fix, while the last is a
                 # missing environment variable. This is the only path that can produce a
                 # provable recovery, so the ledger should say why it did not.
+                #
+                # An exhausted test-mode allowance gets its own category. It is not an error in
+                # this code and it is not transient: Razorpay's sandbox permits thirty payment
+                # links per account for the account's lifetime, and once they are gone the only
+                # audit event that can produce a `SYSTEM_RECOVERED` verdict can never be written
+                # again on that key. Filed as `EXECUTION_ERROR` it reads as a bug; filed under
+                # its own name it reads as what it is, which is a credential that has run out.
+                exhausted = (refusal or "").startswith(QUOTA_PREFIX)
                 event_store.log_exception(
                     session_id,
                     payment.payment_id,
                     f"no payment link: {refusal or 'the API returned nothing'}",
-                    "EXECUTION_ERROR",
+                    "GATEWAY_QUOTA_EXHAUSTED" if exhausted else "EXECUTION_ERROR",
                 )
                 return False
 
