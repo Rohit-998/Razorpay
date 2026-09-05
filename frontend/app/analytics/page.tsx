@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { AppShell } from "../../components/app-shell";
-import { getLadder, type Failure, type Ladder } from "../../lib/api";
-import { count, interval, rupees, share } from "../../lib/format";
+import {
+  getLadder,
+  getShippability,
+  type Failure,
+  type Ladder,
+  type Shippability,
+} from "../../lib/api";
+import { count, interval, outOf, rupees, share } from "../../lib/format";
 
 /**
  * The measurement page.
@@ -21,14 +27,23 @@ import { count, interval, rupees, share } from "../../lib/format";
  *
  * When the harness has not been run there is no report to read and the page says so, with the
  * command that produces it. It does not draw an empty chart, and it does not invent one.
+ *
+ * It reads two endpoints because the two aggregate differently and say so. `/eval/ladder`
+ * pools rupee lift into a bootstrap interval and withholds action counts, since summing
+ * actions across scenarios of different sizes gives a number that means nothing.
+ * `/eval/shippability` sums the defect counts on purpose — a quiet-hour message on outage day
+ * is not cancelled out by a clean run on baseline. Reading the counts off the ladder is what
+ * this page used to do, and they were never there: the bottom section rendered its heading
+ * over nothing at all.
  */
 export default function AnalyticsPage() {
   const [ladder, setLadder] = useState<Ladder | null>(null);
+  const [gates, setGates] = useState<Shippability | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const result = await getLadder();
+    const [result, shipResult] = await Promise.all([getLadder(), getShippability()]);
     if (result.ok) {
       setLadder(result.data);
       setFailure(null);
@@ -36,14 +51,22 @@ export default function AnalyticsPage() {
       setLadder(null);
       setFailure(result.error);
     }
+    // The gates are a second read against the same report, so one arriving without the other
+    // means a partial render, not a broken page. The ladder owns the error notice.
+    setGates(shipResult.ok ? shipResult.data : null);
     setIsLoading(false);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
   const proposal = ladder?.policies.find((p) => p.is_proposal);
-  const net = ladder?.net_lift;
-  const beating = ladder?.seeds_beating_baseline;
+  // Off the proposal's own row. These used to be read from the top level of the response,
+  // where nothing has ever written them, so the headline number on the measurement page was
+  // a dash on every load.
+  const net = proposal?.net_lift;
+  const beating = proposal?.seeds_beating_baseline;
+  const regret = proposal?.regret_vs_ceiling;
+  const proposalGates = gates?.policies.find((p) => p.is_proposal);
   const ranked = [...(ladder?.policies ?? [])].sort((a, b) => b.lift.mean - a.lift.mean);
   const maxLift = Math.max(...ranked.map((p) => p.lift.mean), 1);
   const shareOfAchievable = proposal?.share_of_achievable ?? 0;
@@ -84,9 +107,9 @@ export default function AnalyticsPage() {
               <p>{ladder.design.seeds.length} seeds × {ladder.design.scenarios.length} scenario{ladder.design.scenarios.length === 1 ? "" : "s"}, {ladder.design.pairing}</p>
             </article>
             <article className="simple-stat">
-              <span>Seeds where it won</span>
+              <span>Batches where it won</span>
               <strong>{beating ? beating.count + " / " + beating.of : "—"}</strong>
-              <p>Beat the {ladder.design.baseline_policy} baseline on the same batch</p>
+              <p>Beat the {ladder.design.baseline_policy} baseline on the same batch{beating && beating.count === beating.of ? " — every one of them" : ""}</p>
             </article>
           </section>
 
@@ -94,7 +117,10 @@ export default function AnalyticsPage() {
           <section style={{ marginTop: 36 }}>
             <div className="simple-section-title">
               <div><p className="simple-eyebrow">THE LADDER</p><h2>What each policy recovers</h2></div>
-              <span className="simple-data-badge">{ladder.scenario}</span>
+              {/* Pooled reads carry no scenario name, and an empty badge looked like a
+                  loading state. Naming the count is also the more honest label: the headline
+                  is a mix of weeks including the bad ones, not one flattering scenario. */}
+              <span className="simple-data-badge">{ladder.scenario ?? `all ${ladder.design.scenarios.length} scenarios`}</span>
             </div>
             <div style={{ marginTop: 18, display: "grid", gap: 8 }}>
               {ranked.map((policy) => (
@@ -116,32 +142,43 @@ export default function AnalyticsPage() {
           <section style={{ marginTop: 36 }}>
             <div className="simple-section-title">
               <div><p className="simple-eyebrow">WHAT IT COSTS TO GET IT</p><h2>Gap to the ceiling, and the refusals along the way</h2></div>
+              {proposalGates && <span className="simple-data-badge">{proposalGates.verdict}</span>}
             </div>
             <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
-              {ladder.regret_vs_ceiling && (
+              {regret && (
                 <div className="simple-option" style={{ gridTemplateColumns: "220px 1fr 110px" }}>
                   <span style={{ fontSize: 11 }}>Regret vs {ladder.design.ceiling_policy.replaceAll("_", " ")}</span>
                   <i><em style={{ width: Math.min(100, (1 - shareOfAchievable) * 100) + "%", background: "#d17a73" } as CSSProperties} /></i>
-                  <b style={{ textAlign: "right", fontSize: 11 }}>{rupees(ladder.regret_vs_ceiling.mean)}</b>
+                  <b style={{ textAlign: "right", fontSize: 11 }}>{rupees(regret.mean)}</b>
                 </div>
               )}
-              {Object.entries(ladder.hard_limits ?? {}).map(([key, value]) => (
-                <div key={key} className="simple-option" style={{ gridTemplateColumns: "220px 1fr 110px" }}>
-                  <span style={{ fontSize: 11 }}>{key.replaceAll("_", " ")}</span>
-                  <i><em style={{ width: "0%" } as CSSProperties} /></i>
-                  <b style={{ textAlign: "right", fontSize: 11 }}>{count(value)}</b>
+              {/* The four gates, from the endpoint that sums them. `hard_limits` used to be
+                  read here as though it were a map of counts; it is a list of key names, so
+                  every row rendered its own label as its value — on the pooled response it
+                  rendered nothing at all. A gate is pass/fail against zero, so the bar is
+                  full when it passes and the count carries the denominator it was judged
+                  against, because a count with no denominator cannot be checked. */}
+              {(proposalGates?.gates ?? []).map((gate) => (
+                <div key={gate.key} className="simple-option" style={{ gridTemplateColumns: "220px 1fr 110px" }}>
+                  <span style={{ fontSize: 11 }}>{gate.label}</span>
+                  <i><em style={{ width: gate.passed ? "100%" : "0%", background: gate.passed ? "#29a66b" : "#d17a73" } as CSSProperties} /></i>
+                  <b style={{ textAlign: "right", fontSize: 11 }}>{gate.of ? outOf(gate.count, gate.of) : count(gate.count)}</b>
                 </div>
               ))}
+              {proposalGates && (
+                <div className="simple-option" style={{ gridTemplateColumns: "220px 1fr 110px" }}>
+                  <span style={{ fontSize: 11 }}>{proposalGates.harm.label}</span>
+                  <i><em style={{ width: Math.min(100, proposalGates.harm.rate * 100) + "%", background: "#d4a847" } as CSSProperties} /></i>
+                  <b style={{ textAlign: "right", fontSize: 11 }}>{outOf(proposalGates.harm.count, proposalGates.harm.of)}</b>
+                </div>
+              )}
             </div>
-            {ladder.self_inflicted_block_rate && (
-              <p className="simple-section-copy" style={{ marginTop: 12 }}>
-                {count(ladder.self_inflicted_block_rate.count)} of{" "}
-                {count(ladder.self_inflicted_block_rate.of)} actions were refused by the
-                compliance engine and re-routed rather than dropped
-                ({share(ladder.self_inflicted_block_rate.rate)}). Report generated{" "}
-                {ladder.generated_at.slice(0, 16).replace("T", " ")}.
-              </p>
-            )}
+            <p className="simple-section-copy" style={{ marginTop: 12 }}>
+              {proposalGates
+                ? `Four gates, each of them attainable at zero, so any count above zero is a defect no amount of lift buys back — ${ladder.design.ceiling_policy} fails two of them. The last row is a cost rather than a gate: a failed retry can kill a working instrument, so the only policy that breaks none is one that retries nothing (${share(proposalGates.harm.rate)} here). `
+                : "Gate counts are unavailable — the report was read but its shippability table could not be. "}
+              Report generated {ladder.generated_at.slice(0, 16).replace("T", " ")}.
+            </p>
           </section>
         </>
       )}

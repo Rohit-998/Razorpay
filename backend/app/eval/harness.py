@@ -321,6 +321,49 @@ class EvalRun:
             for c in self.results[(policy, scenario)].comparisons
         ])
 
+    def pooled_net_lift(self, policy: str) -> Interval:
+        """Pooled lift after what the actions cost. What a merchant keeps.
+
+        Pooled the same way as `pooled_lift`, over the same paired observations, so the
+        two are comparable line by line: the difference between them is spend and
+        nothing else.
+        """
+        return paired_interval([
+            c.net_lift_rupees
+            for scenario in self.scenarios
+            for c in self.results[(policy, scenario)].comparisons
+        ])
+
+    def pooled_regret(self, policy: str) -> Interval | None:
+        """Pooled money that was available and went uncollected.
+
+        `None` when any batch ran without an oracle, because a regret figure computed
+        over the subset that had a ceiling would be quietly measured against a smaller
+        denominator than the lift beside it.
+        """
+        values = [
+            c.regret_vs_oracle_rupees
+            for scenario in self.scenarios
+            for c in self.results[(policy, scenario)].comparisons
+        ]
+        if not values or any(v is None for v in values):
+            return None
+        return paired_interval([float(v) for v in values])
+
+    def pooled_seeds_beating_baseline(self, policy: str) -> tuple[int, int]:
+        """`(won, ran)` over every batch. A mean is a claim; this is the count behind it.
+
+        Both halves travel together because the count alone is unreadable — 20 wins is
+        excellent out of 20 and a coin flip out of 40 — and the denominator is the number
+        of batches this policy actually faced, not an assumption about the grid.
+        """
+        comparisons = [
+            c for scenario in self.scenarios
+            for c in self.results[(policy, scenario)].comparisons
+        ]
+        won = sum(1 for c in comparisons if c.incremental_lift_rupees > 0)
+        return won, len(comparisons)
+
     def pooled_share_of_achievable(self, policy: str) -> float | None:
         lift, achievable = 0.0, 0.0
         for scenario in self.scenarios:

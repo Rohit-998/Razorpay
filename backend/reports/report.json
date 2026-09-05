@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-04T09:13:10+00:00",
+  "generated_at": "2026-09-05T13:34:17+00:00",
   "design": {
     "baseline_policy": "do_nothing",
     "ceiling_policy": "oracle",
@@ -44,6 +44,24 @@
         "seeds": 100,
         "excludes_zero": false
       },
+      "net_lift_rupees": {
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "seeds": 100,
+        "excludes_zero": false
+      },
+      "regret_vs_oracle_rupees": {
+        "mean": 2564392.1,
+        "low": 2438662.97,
+        "high": 2693049.33,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "seeds_beating_baseline": {
+        "count": 0,
+        "of": 100
+      },
       "share_of_achievable_lift": 0.0,
       "vs_rules_rupees": {
         "mean": -1170000.26,
@@ -60,6 +78,24 @@
         "high": 673945.21,
         "seeds": 100,
         "excludes_zero": true
+      },
+      "net_lift_rupees": {
+        "mean": 603896.09,
+        "low": 534172.74,
+        "high": 673878.73,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "regret_vs_oracle_rupees": {
+        "mean": 1960430.65,
+        "low": 1859192.61,
+        "high": 2066699.25,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "seeds_beating_baseline": {
+        "count": 100,
+        "of": 100
       },
       "share_of_achievable_lift": 0.23551837100106493,
       "vs_rules_rupees": {
@@ -78,6 +114,24 @@
         "seeds": 100,
         "excludes_zero": true
       },
+      "net_lift_rupees": {
+        "mean": 1168342.99,
+        "low": 1078264.65,
+        "high": 1261736.69,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "regret_vs_oracle_rupees": {
+        "mean": 1394391.84,
+        "low": 1314605.23,
+        "high": 1476443.83,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "seeds_beating_baseline": {
+        "count": 100,
+        "of": 100
+      },
       "share_of_achievable_lift": 0.4562485822663391,
       "vs_rules_rupees": {
         "mean": 0.0,
@@ -95,6 +149,24 @@
         "seeds": 100,
         "excludes_zero": true
       },
+      "net_lift_rupees": {
+        "mean": 1750823.88,
+        "low": 1643697.57,
+        "high": 1859100.67,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "regret_vs_oracle_rupees": {
+        "mean": 812074.47,
+        "low": 747130.5,
+        "high": 878775.38,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "seeds_beating_baseline": {
+        "count": 100,
+        "of": 100
+      },
       "share_of_achievable_lift": 0.6833267151306541,
       "vs_rules_rupees": {
         "mean": 582317.37,
@@ -111,6 +183,24 @@
         "high": 2693049.33,
         "seeds": 100,
         "excludes_zero": true
+      },
+      "net_lift_rupees": {
+        "mean": 2563456.18,
+        "low": 2437714.5,
+        "high": 2692097.94,
+        "seeds": 100,
+        "excludes_zero": true
+      },
+      "regret_vs_oracle_rupees": {
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "seeds": 100,
+        "excludes_zero": false
+      },
+      "seeds_beating_baseline": {
+        "count": 100,
+        "of": 100
       },
       "share_of_achievable_lift": 1.0,
       "vs_rules_rupees": {

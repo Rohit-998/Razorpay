@@ -141,10 +141,24 @@ export type LadderRow = {
   is_baseline: boolean;
   lift: Estimate;
   share_of_achievable: number;
+  // Per policy, not per response. These were declared on `Ladder` below and read from there,
+  // which meant the page's headline — the net lift, the batches it won, the regret against the
+  // ceiling — resolved to `undefined` and rendered as a dash on every load. Lift belongs to a
+  // policy, so it is typed where it lives.
+  net_lift?: Estimate;
+  regret_vs_ceiling?: Estimate;
+  seeds_beating_baseline?: { count: number; of: number };
+  // Action counts, and only on a scenario-scoped read: summing them across scenarios of
+  // different sizes gives a number that means nothing, so the pooled read omits them and
+  // `/eval/shippability` is where the pooled defect counts come from instead.
+  totals?: Record<string, number>;
+  concerns?: Record<string, number>;
+  self_inflicted_block_rate?: number;
+  shippable?: boolean;
 };
 
 export type Ladder = {
-  scenario: string;
+  scenario: string | null;
   scenarios_available: string[];
   generated_at: string;
   design: {
@@ -156,20 +170,24 @@ export type Ladder = {
     pairing: string;
   };
   policies: LadderRow[];
-  net_lift?: Estimate;
-  regret_vs_ceiling?: Estimate;
-  seeds_beating_baseline?: { count: number; of: number };
-  totals?: Record<string, number>;
-  concerns?: Record<string, number>;
-  hard_limits?: Record<string, number>;
-  self_inflicted_block_rate?: { count: number; of: number; rate: number };
-  shippable?: boolean;
 };
 
 export const getLadder = (scenario?: string) =>
   get<Ladder>(`/eval/ladder${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ""}`);
 
-export type Gate = { key: string; label: string; count: number; of: number; passed: boolean };
+/** A gate, with the denominator it was judged against when one exists.
+ *
+ * `of` is null for the two gates that are counts of events rather than shares of something:
+ * an action the gateway refused, and a payment the policy never stopped working. Quiet-hour
+ * contacts and compliance refusals do have a denominator, and a count served without one is a
+ * number the reader cannot check. */
+export type Gate = {
+  key: string;
+  label: string;
+  count: number;
+  of: number | null;
+  passed: boolean;
+};
 
 export type ShippabilityRow = {
   policy: string;

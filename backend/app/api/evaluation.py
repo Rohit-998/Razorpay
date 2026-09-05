@@ -87,6 +87,22 @@ is the compliance engine rejecting one we should have known was not allowed. Whi
 a count lands in is the difference between a bug and a violation."""
 
 
+def _won_of(value: object, seeds: int) -> dict[str, int] | None:
+    """`seeds_beating_baseline` as `{count, of}`, whichever shape the report stored it in.
+
+    The pooled block writes both halves. A per-scenario block writes the count alone, and its
+    denominator is that scenario's seed list — so it is supplied here rather than left for the
+    caller to guess, because a bare "20 seeds won" is unreadable without knowing whether 20 or
+    40 were run. Reports written before either existed get `None`, which the reader can render
+    as absent; serving `0 of 0` would read as "it won nothing".
+    """
+    if isinstance(value, dict):
+        return {"count": int(value["count"]), "of": int(value["of"])}
+    if isinstance(value, int):
+        return {"count": value, "of": seeds}
+    return None
+
+
 @router.get("/eval/report")
 async def full_report():
     """The whole report, exactly as the harness wrote it."""
@@ -130,16 +146,25 @@ async def ladder(scenario: str | None = None):
             "is_baseline": name == "do_nothing",
             "lift": lift,
             "share_of_achievable": entry["share_of_achievable_lift"],
+            # Present on both shapes, because these three are the headline and a page
+            # served the pooled ladder had nothing to put under it. `seeds_beating_baseline`
+            # arrives as `{count, of}` pooled and as a bare count per scenario, where the
+            # denominator is the seed list in `design`; normalised here so the reader does
+            # not have to know which shape it asked for.
+            "net_lift": entry.get("net_lift_rupees"),
+            "regret_vs_ceiling": entry.get("regret_vs_oracle_rupees"),
+            "seeds_beating_baseline": _won_of(
+                entry.get("seeds_beating_baseline"), len(report["design"]["seeds"])
+            ),
         }
         # Only the per-scenario rows carry the operational detail; the pooled block is
         # intervals alone, because summing action counts across scenarios of different
-        # sizes produces a number that means nothing.
+        # sizes produces a number that means nothing. `/eval/shippability` is where the
+        # pooled counts live, and it sums them for a documented reason: a defect is a
+        # defect wherever it happened.
         if scenario is not None:
             row.update(
                 {
-                    "net_lift": entry["net_lift_rupees"],
-                    "regret_vs_ceiling": entry["regret_vs_oracle_rupees"],
-                    "seeds_beating_baseline": entry["seeds_beating_baseline"],
                     "totals": entry["totals"],
                     "concerns": entry["concerns"],
                     "hard_limits": entry["hard_limits"],

@@ -149,6 +149,21 @@ def to_json(run: EvalRun) -> dict:
         "pooled": {
             policy: {
                 "incremental_lift_rupees": _interval_json(run.pooled_lift(policy)),
+                # The pooled figures the markdown headline already prints. They were
+                # computed for the table and thrown away, so anything reading the JSON —
+                # the API, and the page the API feeds — had a pooled lift and no pooled
+                # net of it, no pooled regret, and no count of the batches it won. The
+                # per-scenario blocks carry all three, but one scenario's number served
+                # under a pooled heading is the wrong number wearing the right label.
+                "net_lift_rupees": _interval_json(run.pooled_net_lift(policy)),
+                "regret_vs_oracle_rupees": (
+                    None if (regret := run.pooled_regret(policy)) is None
+                    else _interval_json(regret)
+                ),
+                "seeds_beating_baseline": {
+                    "count": (won_ran := run.pooled_seeds_beating_baseline(policy))[0],
+                    "of": won_ran[1],
+                },
                 "share_of_achievable_lift": run.pooled_share_of_achievable(policy),
                 "vs_rules_rupees": (
                     _interval_json(run.head_to_head(policy, "rules"))

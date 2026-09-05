@@ -91,6 +91,84 @@ def test_a_named_scenario_carries_the_operational_detail() -> None:
     assert "totals" in scoped and "concerns" in scoped and "shippable" in scoped
 
 
+# ── The headline the page renders, on the response the page asks for ──────────
+
+
+def test_the_pooled_row_carries_the_three_figures_the_headline_is_made_of() -> None:
+    """The bug this locks down was invisible in the API and total in the product.
+
+    `net_lift`, `regret_vs_ceiling` and `seeds_beating_baseline` existed only on
+    scenario-scoped rows, and the analytics page reads the pooled response — so the
+    measurement page's headline number, the one figure the whole submission rests on,
+    rendered as an em dash on every load, with an empty section under it.
+
+    Asserted on the pooled read specifically, because that is the request the page makes.
+    """
+    rows = {r["policy"]: r for r in _run(evaluation.ladder())["policies"]}
+    proposal = rows["payrevive"]
+
+    for key in ("net_lift", "regret_vs_ceiling", "seeds_beating_baseline"):
+        assert proposal[key] is not None, f"{key} is what the headline renders"
+
+    pooled = REPORT["pooled"]["payrevive"]
+    assert proposal["net_lift"] == pooled["net_lift_rupees"]
+    assert proposal["regret_vs_ceiling"] == pooled["regret_vs_oracle_rupees"]
+
+
+def test_net_lift_is_the_gross_figure_minus_what_the_actions_cost() -> None:
+    """Two numbers a page can put under one label. Net is the smaller one, and the gap is
+    spend — so if they were ever equal, spend would have stopped being counted."""
+    rows = {r["policy"]: r for r in _run(evaluation.ladder())["policies"]}
+    proposal = rows["payrevive"]
+
+    assert proposal["net_lift"]["mean"] < proposal["lift"]["mean"]
+    assert proposal["net_lift"]["excludes_zero"] is True
+    # Spend is small against the lift, which is the point of pricing actions — but it is
+    # not zero, and a net figure that equalled the gross would mean it was being dropped.
+    assert 0 < proposal["lift"]["mean"] - proposal["net_lift"]["mean"] < 50_000
+
+
+def test_the_win_count_arrives_with_the_number_of_batches_behind_it() -> None:
+    """`20` is excellent out of 20 and a coin flip out of 40.
+
+    Pooled, the denominator is every batch the policy faced — five scenarios by twenty
+    seeds — not the seed list, which is what a page would have to assume if the count
+    travelled alone.
+    """
+    rows = {r["policy"]: r for r in _run(evaluation.ladder())["policies"]}
+    won = rows["payrevive"]["seeds_beating_baseline"]
+    design = REPORT["design"]
+
+    assert won["of"] == len(design["scenarios"]) * len(design["seeds"])
+    assert won["count"] == won["of"], "it beats doing nothing on every batch it ran"
+    assert rows["do_nothing"]["seeds_beating_baseline"]["count"] == 0, "it is the baseline"
+
+
+def test_a_scoped_win_count_is_given_the_seed_list_as_its_denominator() -> None:
+    """Per-scenario the report stores a bare count, because the denominator there is that
+    scenario's seeds. Normalising it in the API means the reader does not have to know which
+    shape it asked for to render the same widget."""
+    scoped = {r["policy"]: r for r in _run(evaluation.ladder("baseline"))["policies"]}
+    won = scoped["payrevive"]["seeds_beating_baseline"]
+
+    assert won["of"] == len(REPORT["design"]["seeds"])
+    assert won["count"] == REPORT["by_scenario"]["baseline"]["payrevive"][
+        "seeds_beating_baseline"
+    ]
+
+
+def test_a_report_without_the_pooled_figures_serves_absence_not_zero() -> None:
+    """Reports written before this existed have a pooled block with three keys.
+
+    Serving `0 of 0` for them would read as "it won nothing", which is a claim; `None` is
+    the truth, and the page renders it as a dash. The alternative — a `KeyError` — would
+    take the whole measurement page down over a stale artifact.
+    """
+    assert evaluation._won_of(None, 20) is None
+    assert evaluation._won_of(17, 20) == {"count": 17, "of": 20}
+    assert evaluation._won_of({"count": 100, "of": 100}, 20) == {"count": 100, "of": 100}
+
+
 def test_an_unknown_scenario_names_the_ones_that_exist() -> None:
     with pytest.raises(HTTPException) as caught:
         _run(evaluation.ladder("no_such_scenario"))
