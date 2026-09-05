@@ -5,13 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "./app-shell";
 import { ArrowUpRight, Check, Spark } from "./icons";
 import {
+  deliverOutcomes,
   getPayments,
   getStats,
   runBatch,
-  type BatchRunResult,
   type DashboardStats,
   type Failure,
   type PaymentSummary,
+  type SandboxOutcomes,
 } from "../lib/api";
 import { paise, share } from "../lib/format";
 
@@ -49,7 +50,7 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [batchState, setBatchState] = useState<"idle" | "running" | "complete" | "error">("idle");
-  const [batchResult, setBatchResult] = useState<BatchRunResult | null>(null);
+  const [batchResult, setBatchResult] = useState<SandboxOutcomes | null>(null);
   const [batchError, setBatchError] = useState<Failure | null>(null);
 
   const loadPayments = useCallback(async () => {
@@ -64,19 +65,31 @@ export function Dashboard() {
     void loadPayments();
   }, [loadPayments]);
 
+  // Two calls, because the pipeline is two things. `/batch/run` classifies, checks compliance
+  // and takes one action per payment — and stops, because deciding the outcome is exactly what
+  // the deleted version of it did with `random.random()`. `/sandbox/outcomes` then lets the
+  // simulator's customers respond and routes each response through the real webhook handler,
+  // which is what produces a verdict. Reporting "batch complete" after the first call alone
+  // would put a number on the screen for work that has not finished.
   async function handleBatchRun() {
     setBatchState("running");
     setBatchResult(null);
     setBatchError(null);
     const result = await runBatch();
-    if (result.ok) {
-      setBatchResult(result.data);
-      setBatchState("complete");
-      await loadPayments();
-    } else {
+    if (!result.ok) {
       setBatchError(result.error);
       setBatchState("error");
+      return;
     }
+    const observed = await deliverOutcomes();
+    if (!observed.ok) {
+      setBatchError(observed.error);
+      setBatchState("error");
+      return;
+    }
+    setBatchResult(observed.data);
+    setBatchState("complete");
+    await loadPayments();
   }
 
   const ours = stats?.provably_ours;
@@ -103,8 +116,8 @@ export function Dashboard() {
 
       {batchState !== "idle" && (
         <div className={"simple-notice " + (batchState === "error" ? "error" : "")} role="status">
-          {batchState === "running" && <><span className="spinner" /> Analysing payments and selecting recovery actions…</>}
-          {batchState === "complete" && <><Check /> Batch complete{batchResult?.recovered !== undefined ? " — " + batchResult.recovered + " payments recovered" : "."}</>}
+          {batchState === "running" && <><span className="spinner" /> Analysing payments, selecting recovery actions, and waiting for outcomes…</>}
+          {batchState === "complete" && <><Check /> Batch complete{batchResult?.verdicts ? " — " + (batchResult.verdicts.SYSTEM_RECOVERED ?? 0) + " paid on our link, " + (batchResult.verdicts.CUSTOMER_SELF_RECOVERED ?? 0) + " came back on their own, " + (batchResult.verdicts.AMBIGUOUS ?? 0) + " unprovable" : "."}</>}
           {batchState === "error" && <>{batchError?.message ?? "Could not run the recovery batch."}{batchError?.fix ? " Run: " + batchError.fix : ""}</>}
         </div>
       )}
@@ -113,10 +126,10 @@ export function Dashboard() {
         <article className="simple-summary-main">
           <span>Recovered — provably ours</span>
           <strong>{ours ? paise(ours.amount_paise) : "—"}</strong>
-          <p>{isLoading ? "Loading payments…" : ours ? ours.sessions + " payment" + (ours.sessions === 1 ? "" : "s") + " Razorpay reported as paid on our link" : "No attribution data yet"}</p>
+          <p>{isLoading ? "Loading payments…" : !ours ? "No attribution data yet" : ours.sessions + " payment" + (ours.sessions === 1 ? "" : "s") + " Razorpay reported as paid on our link" + (ours.unestablished_sessions ? ". " + ours.unestablished_sessions + " more came back with no callback to say why — excluded, not assumed" : "")}</p>
           <div className="simple-progress">
-            <span><b>{ours ? share(ours.share_of_recovered, 0) : "—"}</b> of recovered rupees traced to our link</span>
-            <i><em style={{ width: (ours ? ours.share_of_recovered * 100 : 0) + "%" }} /></i>
+            <span><b>{ours ? share(ours.established.share_of_established_sessions, 0) : "—"}</b> of recoveries with an established cause{ours && ours.established.self_recovered_sessions ? " — the other " + ours.established.self_recovered_sessions + " came back on their own" : ""}</span>
+            <i><em style={{ width: (ours ? ours.established.share_of_established_sessions * 100 : 0) + "%" }} /></i>
           </div>
         </article>
         <article className="simple-stat">

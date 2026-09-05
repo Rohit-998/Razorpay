@@ -125,6 +125,20 @@ async def get_stats():
     ]
     ours_paise = attributed["SYSTEM_RECOVERED"]["amount_paise"]
 
+    # The same question asked of one population instead of two, because the rupee share above
+    # mixes them and reads far worse than the system behaved. Its denominator is every rupee
+    # that came back, and 217 of those recoveries were written by a `random.random()` that has
+    # since been deleted — so a real numerator is being divided by a denominator that is
+    # largely fabricated, and the honest 0.4% it produces is honest about the wrong thing.
+    #
+    # This one is counted over sessions an audit event stands behind, and only those. It cannot
+    # be a rupee share: `_record_recovery` books `amount_recovered = 0` for every verdict except
+    # `SYSTEM_RECOVERED`, deliberately, so a rupee share of the established cohort would divide
+    # ours by ours and return 100% forever.
+    established_sessions = sum(b["sessions"] for b in attributed.values())
+    ours_sessions = attributed["SYSTEM_RECOVERED"]["sessions"]
+    theirs_sessions = attributed["CUSTOMER_SELF_RECOVERED"]["sessions"]
+
     return {
         "sessions_total": len(rows),
         "by_status": by_status,
@@ -149,6 +163,22 @@ async def get_stats():
             # and the dashboard cannot tell them apart from a percentage alone.
             "unestablished_sessions": unattributed["sessions"],
             "unestablished_paise": unattributed["amount_paise"],
+            "established": {
+                "sessions": established_sessions,
+                "ours_sessions": ours_sessions,
+                "self_recovered_sessions": theirs_sessions,
+                "share_of_established_sessions": (
+                    round(ours_sessions / established_sessions, 4)
+                    if established_sessions
+                    else 0.0
+                ),
+                "note": (
+                    "Of the recoveries whose cause an audit event establishes, the share our "
+                    "link caused. Counted in sessions, not rupees, because every verdict "
+                    "except SYSTEM_RECOVERED books zero rupees by design. The rest of this "
+                    "cohort came back on their own and is not claimed."
+                ),
+            },
             "caveat": (
                 (
                     f"{unattributed['sessions']} of "

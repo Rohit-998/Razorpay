@@ -1,7 +1,7 @@
 """Batch operations — generate synthetic data, run pipeline, get report."""
 
 from fastapi import APIRouter
-from app.db.database import get_supabase
+from app.db.database import get_supabase, select_all
 from app.synthetic.generator import generator
 from app.cache.feature_store import feature_store
 import structlog
@@ -107,14 +107,12 @@ async def run_batch_pipeline():
     """
     from app.worker import process_failed_payment
 
-    db = get_supabase()
-
-    sessions = db.table("recovery_sessions").select("payment_id").eq("status", "OPEN").execute()
-    if not sessions.data:
+    open_sessions = select_all("recovery_sessions", "payment_id", status="OPEN")
+    if not open_sessions:
         return {"status": "no_data", "message": "No open recovery sessions found."}
 
-    results = {"total": len(sessions.data), "processed": 0, "errored": 0}
-    for session in sessions.data:
+    results = {"total": len(open_sessions), "processed": 0, "errored": 0}
+    for session in open_sessions:
         try:
             # `ctx` is ARQ's job context, which this pipeline does not read.
             await process_failed_payment({}, session["payment_id"])
@@ -125,9 +123,13 @@ async def run_batch_pipeline():
             )
             results["errored"] += 1
 
-    statuses = db.table("recovery_sessions").select("status").execute()
+    # Paged, and the reason is on the response of the last run: this table has passed a
+    # thousand rows, and the census an unbounded `select()` returned summed to exactly 1000 —
+    # `{ESCALATED: 60, FAILED: 610, OPEN: 108, RECOVERED: 222}`. That is PostgREST's
+    # `db-max-rows` reported as a population, with no error and no truncation flag, on the one
+    # number a reviewer would read as the state of the whole batch.
     counts: dict[str, int] = {}
-    for row in (statuses.data or []):
+    for row in select_all("recovery_sessions", "status"):
         counts[row["status"]] = counts.get(row["status"], 0) + 1
 
     logger.info("batch.pipeline_complete", **results)

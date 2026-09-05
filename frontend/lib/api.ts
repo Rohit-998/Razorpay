@@ -264,7 +264,7 @@ export type DashboardStats = {
   /** Ingested minus returned — subtracted by the endpoint, not by the page. */
   unrecovered_paise: number;
   attributed: Record<string, { label: string; sessions: number; amount_paise: number }>;
-  unattributed: { sessions: number; amount_paise: number };
+  unattributed: { label: string; sessions: number; amount_paise: number; why: string };
   attribution_order: string[];
   /** The one share the dashboard draws, computed by the endpoint. See its `note`. */
   provably_ours: {
@@ -272,6 +272,25 @@ export type DashboardStats = {
     sessions: number;
     recovered_paise: number;
     share_of_recovered: number;
+    /** Recoveries excluded from the numerator because no audit event decided them. */
+    unestablished_sessions: number;
+    unestablished_paise: number;
+    /** The same question over one population: recoveries whose cause is established.
+     *
+     *  `share_of_recovered` divides a real numerator by a denominator that still holds 217
+     *  legacy rows a deleted `random.random()` wrote, so it reads ~0% and is honest about the
+     *  wrong thing. This is counted in sessions because every verdict except
+     *  `SYSTEM_RECOVERED` books zero rupees on purpose. */
+    established: {
+      sessions: number;
+      ours_sessions: number;
+      self_recovered_sessions: number;
+      share_of_established_sessions: number;
+      note: string;
+    };
+    /** Present only when something was excluded. A bare 0% cannot tell "nothing worked"
+     *  from "nothing was measured", so the endpoint says which one it is. */
+    caveat: string | null;
     note: string;
   };
   counterfactual: { available_at: string; note: string };
@@ -386,7 +405,7 @@ export type PipelineSummary = {
   total_sessions: number;
   recovered: number;
   failed: number;
-  audit_events: number;
+  audited_on_page: number;
 };
 
 export const getPipeline = (limit = 50) =>
@@ -401,6 +420,25 @@ export type BatchRunResult = {
 
 export const runBatch = () => post<BatchRunResult>("/batch/run");
 export const generateBatch = () => post<Record<string, unknown>>("/batch/generate");
+
+export type SandboxOutcomes = {
+  status: string;
+  sessions_considered?: number;
+  customer_behaviour?: { paid_on_our_link: number; paid_their_own_way: number; no_response: number };
+  skipped?: Record<string, number>;
+  verdicts?: Record<string, number>;
+  decided_here?: string;
+  decided_by_production_code?: string;
+  [key: string]: unknown;
+};
+
+// The fourth step, and the one the pipeline is incomplete without. `/batch/run` takes actions
+// and stops — outcomes are not ours to decide, and the version of it that decided them wrote
+// coin flips to the database as proven recoveries. So on a sandbox key nothing ever closes: the
+// attribution split is three zeros and the overview has nothing to show. This endpoint lets the
+// simulator's customers respond and routes each response through the real webhook handler, which
+// is what produces a verdict, an audit event and a bandit update.
+export const deliverOutcomes = () => post<SandboxOutcomes>("/sandbox/outcomes");
 
 // ── View models ───────────────────────────────────────────────────────────────────────
 //
@@ -509,6 +547,20 @@ const eventsOf = (trail: Trail, type: string) => trail.filter((e) => e.event_typ
 const lastOf = (trail: Trail, ...types: string[]) =>
   [...trail].reverse().find((e) => types.includes(e.event_type));
 
+/** Every event type that means an action went out, in both of the names the store has used.
+ *
+ * Mirrors `event_store.ACTION_EVENTS_READ`. The old writer stamped all five as
+ * `RETRY_ATTEMPTED`, so a trail can carry either name and the detail page has to match both or
+ * the "attempted at" line goes blank for half the sessions in the table. */
+const ACTION_EVENTS = [
+  "PAYMENT_LINK_SENT",
+  "RETRY_SCHEDULED",
+  "IMMEDIATE_RETRY_MOCKED",
+  "DELAYED_RETRY_WOKE_UP",
+  "ESCALATED",
+  "RETRY_ATTEMPTED",
+];
+
 function str(value: unknown, fallback = ""): string {
   return typeof value === "string" && value ? value : fallback;
 }
@@ -609,7 +661,7 @@ export async function getPayment(id: string): Promise<Result<PaymentDetails>> {
   const { payment, session, audit_trail: trail = [] } = detail.data;
   const classified = lastOf(trail, "CLASSIFIED");
   const chosen = lastOf(trail, "STRATEGY_SELECTED");
-  const attempted = lastOf(trail, "RETRY_ATTEMPTED", "PAYMENT_LINK_SENT", "ESCALATED");
+  const attempted = lastOf(trail, ...ACTION_EVENTS);
   const reasoning = str(chosen?.event_data?.reasoning);
 
   // The session row is the worker's conclusion and the audit event is its working; where both

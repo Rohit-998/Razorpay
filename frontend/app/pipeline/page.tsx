@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/app-shell";
-import { Spark, Check, ArrowUpRight } from "../../components/icons";
-import { API_BASE_URL } from "../../lib/api";
+import { Spark, ArrowUpRight } from "../../components/icons";
+import { API_BASE_URL, getStats, type DashboardStats } from "../../lib/api";
+import { paise, share } from "../../lib/format";
 
 // The base URL used to be derived here with `?? ""`, which resolves to the Next server's own
 // origin — so every request on this page went to `/api/v1/...` on port 3000, 404'd, and the
@@ -39,7 +40,7 @@ type PipelineSummary = {
   total_sessions: number;
   recovered: number;
   failed: number;
-  audit_events: number;
+  audited_on_page: number;
 };
 
 function conciseDate(ts: string | null) {
@@ -65,6 +66,7 @@ function statusClass(status: string | null) {
 export default function PipelinePage() {
   const [rows, setRows] = useState<PipelineRow[]>([]);
   const [summary, setSummary] = useState<PipelineSummary | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"table" | "pipeline">("table");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -73,12 +75,24 @@ export default function PipelinePage() {
   const [generateState, setGenerateState] = useState<StepState>("pending");
   const [trainState, setTrainState] = useState<StepState>("pending");
   const [recoverState, setRecoverState] = useState<StepState>("pending");
+  const [observeState, setObserveState] = useState<StepState>("pending");
   const [trainResults, setTrainResults] = useState<Record<string, unknown> | null>(null);
   const [batchResults, setBatchResults] = useState<Record<string, unknown> | null>(null);
+  const [observeResults, setObserveResults] = useState<Record<string, unknown> | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/pipeline/data?limit=50`);
+      // Two calls, because the counts and the attribution split are different claims. The
+      // table needs the join `/pipeline/data` does; the headline needs the one share
+      // `/dashboard/stats` is willing to serve. The card used to draw
+      // `recovered / total_sessions` and label it "recovery rate" — computed here, in the
+      // browser, after the API stopped serving it precisely because it counts every customer
+      // who would have paid anyway as a win.
+      const [res, served] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/pipeline/data?limit=50`),
+        getStats(),
+      ]);
+      if (served.ok) setStats(served.data);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setRows(data.rows || []);
@@ -113,8 +127,10 @@ export default function PipelinePage() {
     setGenerateState("pending");
     setTrainState("pending");
     setRecoverState("pending");
+    setObserveState("pending");
     setTrainResults(null);
     setBatchResults(null);
+    setObserveResults(null);
 
     const ok1 = await runStep("/api/v1/batch/generate", setGenerateState);
     if (!ok1) return;
@@ -123,7 +139,13 @@ export default function PipelinePage() {
     if (!ok2) return;
 
     const ok3 = await runStep("/api/v1/batch/run", setRecoverState, setBatchResults);
-    if (ok3) {
+    if (!ok3) return;
+
+    // Step three takes actions and stops there, because deciding the outcome is what the
+    // deleted version of it did with `random.random()`. Nothing closes until a customer
+    // responds, so the run is not finished until the callbacks have been delivered.
+    const ok4 = await runStep("/api/v1/sandbox/outcomes", setObserveState, setObserveResults);
+    if (ok4) {
       await loadData(); // Reload table data after pipeline completes
     }
   }
@@ -132,7 +154,11 @@ export default function PipelinePage() {
     return "pipeline-step " + state;
   }
 
-  const isRunning = generateState === "running" || trainState === "running" || recoverState === "running";
+  const isRunning =
+    generateState === "running" ||
+    trainState === "running" ||
+    recoverState === "running" ||
+    observeState === "running";
 
   return (
     <AppShell active="pipeline">
@@ -156,14 +182,14 @@ export default function PipelinePage() {
             <strong>{summary.total_sessions} sessions</strong>
             <p>{summary.total_payments} payments processed through the AI pipeline</p>
             <div className="simple-progress">
-              <span><b>{summary.total_sessions > 0 ? Math.round(summary.recovered / summary.total_sessions * 100) : 0}%</b> recovery rate</span>
-              <i><em style={{ width: (summary.total_sessions > 0 ? Math.round(summary.recovered / summary.total_sessions * 100) : 0) + "%" }} /></i>
+              <span><b>{stats ? share(stats.provably_ours.established.share_of_established_sessions, 0) : "—"}</b> of recoveries with an established cause traced to our link</span>
+              <i><em style={{ width: (stats ? stats.provably_ours.established.share_of_established_sessions * 100 : 0) + "%" }} /></i>
             </div>
           </article>
           <article className="simple-stat">
             <span>Recovered</span>
             <strong style={{ color: "#167a4d" }}>{summary.recovered}</strong>
-            <p>Payments successfully recovered by AI</p>
+            <p>{stats ? paise(stats.attributed.SYSTEM_RECOVERED?.amount_paise ?? 0) + " of it Razorpay named our link for" : "Sessions that came back — cause established separately"}</p>
           </article>
           <article className="simple-stat">
             <span>Failed / Escalated</span>
@@ -222,9 +248,8 @@ export default function PipelinePage() {
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <>
+                    <Fragment key={row.payment_id}>
                       <tr
-                        key={row.payment_id}
                         onClick={() => setExpandedRow(expandedRow === row.payment_id ? null : row.payment_id)}
                         style={{
                           borderBottom: "1px solid #eef2f0",
@@ -257,7 +282,7 @@ export default function PipelinePage() {
                         </td>
                       </tr>
                       {expandedRow === row.payment_id && (
-                        <tr key={row.payment_id + "-detail"}>
+                        <tr>
                           <td colSpan={10} style={{ padding: 0 }}>
                             <div style={{ background: "#f8faf9", padding: "16px 20px", borderBottom: "2px solid #dce6df" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 12 }}>
@@ -308,7 +333,7 @@ export default function PipelinePage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -338,10 +363,24 @@ export default function PipelinePage() {
               <b>{recoverState === "complete" ? "✓" : "3"}</b>
               <div>
                 <strong>Run batch recovery</strong>
-                <span>{recoverState === "running" ? "Processing failed payments…" : recoverState === "complete" && batchResults ? `Done — ${(batchResults as Record<string, unknown>).recovered ?? 0} recovered` : recoverState === "error" ? "Recovery failed" : "Classifies and recovers all pending failed payments"}</span>
+                <span>{recoverState === "running" ? "Processing failed payments…" : recoverState === "complete" && batchResults ? `Actions taken — ${((batchResults as Record<string, unknown>).results as Record<string, unknown>)?.processed ?? 0} payments worked, none closed yet` : recoverState === "error" ? "Recovery failed" : "Classifies, checks compliance, and takes one action per payment"}</span>
+              </div>
+            </li>
+            <li className={stepClass(observeState)}>
+              <b>{observeState === "complete" ? "✓" : "4"}</b>
+              <div>
+                <strong>Deliver the callbacks</strong>
+                <span>{observeState === "running" ? "Letting customers respond…" : observeState === "complete" && observeResults ? `${((observeResults as Record<string, unknown>).verdicts as Record<string, number>)?.SYSTEM_RECOVERED ?? 0} paid on our link, ${((observeResults as Record<string, unknown>).verdicts as Record<string, number>)?.CUSTOMER_SELF_RECOVERED ?? 0} came back on their own, ${((observeResults as Record<string, unknown>).verdicts as Record<string, number>)?.AMBIGUOUS ?? 0} unprovable` : observeState === "error" ? "Callback delivery failed" : "Step 3 does not decide outcomes. The sandbox feed answers only whether each customer paid and on which channel; the real webhook handler decides the verdict"}</span>
               </div>
             </li>
           </ol>
+
+          {observeResults && (
+            <article className="json-panel" style={{ marginTop: 24 }}>
+              <div><span>ATTRIBUTION</span><small>Decided by the webhook handler, not by the feed</small></div>
+              <pre>{JSON.stringify(observeResults, null, 2)}</pre>
+            </article>
+          )}
 
           {batchResults && (
             <article className="json-panel" style={{ marginTop: 24 }}>

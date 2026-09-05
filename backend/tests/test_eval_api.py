@@ -441,6 +441,48 @@ def test_a_low_share_arrives_with_the_reason_it_is_low(live: _FakeDB) -> None:
     assert "python -m app.eval" in ours["caveat"]
 
 
+def test_the_established_share_excludes_the_rows_it_says_it_excludes(live: _FakeDB) -> None:
+    """The rupee share divides a real numerator by a partly invented denominator.
+
+    ₹67 L of the ₹217 L that came back here is `s_pending` and `s_legacy_coinflip` — one
+    callback that has not arrived and one row a deleted `random.random()` wrote. Both belong in
+    the totals, because the money did arrive. Neither belongs in a denominator used to judge
+    whether the system caused anything, and on the live table those rows are 217 of 320
+    recoveries, which drags a working split down to 0%.
+
+    So this share is counted over the audit-backed cohort only: four established verdicts, two
+    of them ours. Sessions rather than rupees, because every verdict except `SYSTEM_RECOVERED`
+    books zero rupees on purpose — a rupee share of this cohort would divide ours by ours.
+    """
+    ours = _run(dashboard.get_stats())["provably_ours"]
+    established = ours["established"]
+
+    assert established["sessions"] == 4, "two links, one self-recovery, one ambiguous"
+    assert established["ours_sessions"] == 2
+    assert established["self_recovered_sessions"] == 1
+    assert established["share_of_established_sessions"] == 0.5
+    # The excluded rows are excluded from this denominator, not from the table.
+    assert established["sessions"] + ours["unestablished_sessions"] == 6
+    assert established["share_of_established_sessions"] > ours["share_of_recovered"]
+
+
+def test_the_established_share_never_counts_an_ambiguous_recovery_as_ours(
+    live: _FakeDB,
+) -> None:
+    """The ambiguous session is in the denominator and not in the numerator, which is the whole
+    point of having a third bucket. Folding it in either direction would make the share either
+    an overclaim or a silent write-off of a real recovery."""
+    served = _run(dashboard.get_stats())
+    established = served["provably_ours"]["established"]
+    ambiguous = served["attributed"]["AMBIGUOUS"]["sessions"]
+
+    assert ambiguous == 1
+    assert established["ours_sessions"] + established["self_recovered_sessions"] + ambiguous == (
+        established["sessions"]
+    )
+    assert established["share_of_established_sessions"] == round(2 / 4, 4)
+
+
 def test_the_dashboard_points_at_where_the_counterfactual_lives(live: _FakeDB) -> None:
     """Live traffic has no `do_nothing` twin, so lift cannot be computed here. Saying so, and
     naming the endpoint that can, is the difference between a missing metric and a hidden
