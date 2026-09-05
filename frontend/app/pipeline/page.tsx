@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/app-shell";
 import { Spark, ArrowUpRight } from "../../components/icons";
-import { API_BASE_URL, BATCH_SLICE, getStats, type DashboardStats } from "../../lib/api";
+import { API_BASE_URL, BATCH_SLICE, getExceptions, getStats, type DashboardStats, type Exceptions } from "../../lib/api";
 import { paise, share } from "../../lib/format";
 
 // The base URL used to be derived here with `?? ""`, which resolves to the Next server's own
@@ -67,6 +67,7 @@ export default function PipelinePage() {
   const [rows, setRows] = useState<PipelineRow[]>([]);
   const [summary, setSummary] = useState<PipelineSummary | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [exceptions, setExceptions] = useState<Exceptions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"table" | "pipeline">("table");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -93,6 +94,13 @@ export default function PipelinePage() {
         getStats(),
       ]);
       if (served.ok) setStats(served.data);
+      // The escalation queue is a third claim again, and it is read before the table's throw:
+      // a failure to join 50 payments should not blank out the list of payments a person has
+      // been asked to work. Fifty are counted and eight are shown, because a category
+      // breakdown taken over only the rows on screen would report the page as the population —
+      // "8 compliance" for a queue holding 42 of them.
+      const raised = await getExceptions(50);
+      if (raised.ok) setExceptions(raised.data);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setRows(data.rows || []);
@@ -393,6 +401,54 @@ export default function PipelinePage() {
               <pre>{JSON.stringify(batchResults, null, 2)}</pre>
             </article>
           )}
+
+          {/* The other half of the stopping rule. `/dashboard/exceptions` has served this queue
+              since the compliance engine existed and no page read it, so on screen a give-up was
+              indistinguishable from a payment nobody had got to yet — the exact collapse the
+              report refuses to make. A payment here has run out of legal moves, not out of
+              value, and it arrives with the sentence that justified stopping. */}
+          <section style={{ marginTop: 36 }}>
+            <div className="simple-section-title">
+              <div>
+                <p className="simple-eyebrow">WHERE IT STOPPED</p>
+                <h2>Handed to a person, with the reason attached</h2>
+              </div>
+              {exceptions && (
+                <span className="simple-data-badge">
+                  {Object.entries(exceptions.by_category).map(([key, n]) => `${n} ${key.replaceAll("_", " ").toLowerCase()}`).join(" · ") || "none logged"}
+                </span>
+              )}
+            </div>
+            <div className="simple-feed" role="list" style={{ marginTop: 18 }}>
+              <div className="simple-feed-head" aria-hidden="true" style={{ gridTemplateColumns: "1.15fr .75fr 2.3fr .8fr" }}>
+                <span>Payment</span><span>Category</span><span>Why it arrived here</span><span>Logged</span>
+              </div>
+              {(exceptions?.exceptions ?? []).slice(0, 8).map((row, index) => (
+                <Link
+                  href={"/payment/" + encodeURIComponent(row.payment_id)}
+                  className="simple-payment-row"
+                  role="listitem"
+                  key={row.payment_id + index}
+                  style={{ gridTemplateColumns: "1.15fr .75fr 2.3fr .8fr" }}
+                >
+                  <span className="simple-payment-id"><b>{row.payment_id}</b></span>
+                  <span className={"simple-status " + (row.category === "COMPLIANCE" ? "queued" : "failed")}>
+                    {row.category.replaceAll("_", " ").toLowerCase()}
+                  </span>
+                  <span className="simple-cause">{row.reason}</span>
+                  <span className="simple-cause">{conciseDate(row.logged_at)}</span>
+                </Link>
+              ))}
+              {exceptions && !exceptions.exceptions.length && (
+                <p className="simple-empty" style={{ padding: 20 }}>No payment has run out of legal moves yet.</p>
+              )}
+            </div>
+            {exceptions && (
+              <p className="simple-section-copy" style={{ marginTop: 12 }}>
+                {Math.min(8, exceptions.exceptions.length)} most recent of {exceptions.count} logged. {exceptions.note}
+              </p>
+            )}
+          </section>
         </section>
       )}
     </AppShell>

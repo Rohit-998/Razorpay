@@ -17,7 +17,7 @@
  * rate" — is the exact quantity `REPORT.md` argues is not a measurement of anything.
  */
 
-import { when } from "./format";
+import { cause, paise, share, when } from "./format";
 
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 const V1 = `${BASE}/api/v1`;
@@ -544,6 +544,15 @@ export type ShapExplanation = {
 /** A strategy the bandit could have picked, with its posterior mean in this context. */
 export type ActionScore = { action: string; score: number; trials?: number };
 
+/** One row of the audit trail, flattened to what a reviewer reads: what happened, when, and
+ *  the number the decision was made on. */
+export type TrailStep = {
+  /** The event type as the store wrote it, uppercase — the vocabulary is the point. */
+  event: string;
+  at: string;
+  detail: string;
+};
+
 export type PaymentDetails = {
   id: string;
   amount: number;
@@ -567,6 +576,8 @@ export type PaymentDetails = {
   guardrails?: string[];
   /** The attribution verdict, once a capture has been seen. Never guessed here. */
   attribution?: string | null;
+  /** Every audit row for this payment, oldest first — the trail itself, not a summary of it. */
+  trail: TrailStep[];
 };
 
 type Trail = AuditEvent[];
@@ -659,6 +670,73 @@ function guardrailsFrom(trail: Trail, policy: CompliancePolicy | null): string[]
   return lines;
 }
 
+/** The audit trail, as a list a person can read down in order.
+ *
+ * `/payments/{id}` has always returned this array and no page rendered it, so the one artefact
+ * the brief names outright — an audit trail — was reachable only by curl. Every row keeps the
+ * event type the store wrote, because the vocabulary is what makes the trail checkable: a
+ * `COMPLIANCE_CHECKED` that refused and an `EXCEPTION_LOGGED` that gave up are different
+ * claims, and a page that flattened both into "action taken" would be the summary this trail
+ * exists to replace.
+ */
+function trailFrom(trail: Trail): TrailStep[] {
+  return trail.map((event) => ({
+    event: event.event_type,
+    at: event.created_at,
+    detail: detailOf(event),
+  }));
+}
+
+/** The one line of an audit row worth reading on screen.
+ *
+ * A switch rather than a dump of `event_data`, because each event carries a different payload
+ * and the value of the row is the number the decision turned on — `{"approved": false}` printed
+ * raw says neither what was refused nor on what count. Unknown types fall through to their
+ * action name, so a new writer renders something rather than a blank row. */
+function detailOf(event: AuditEvent): string {
+  const data = (event.event_data ?? {}) as Record<string, unknown>;
+  const blocked = Array.isArray(data.blocked_by)
+    ? data.blocked_by.filter((reason): reason is string => typeof reason === "string")
+    : [];
+
+  switch (event.event_type) {
+    case "INGESTED":
+      return str(data.error_code) || "Received from the gateway";
+    case "CLASSIFIED": {
+      const confidence = num(data.confidence);
+      const root = cause(str(data.root_cause, "UNCLASSIFIED"));
+      return confidence ? `${root} at ${share(confidence)} confidence` : root;
+    }
+    case "STRATEGY_SELECTED": {
+      const strategy = cause(str(data.strategy, "—"));
+      const by = str(data.decided_by);
+      return by ? `${strategy}, chosen by ${by}` : strategy;
+    }
+    case "COMPLIANCE_CHECKED":
+      return blocked.length
+        ? `Refused — ${blocked.join("; ")}`
+        : "Approved against every limit in force";
+    case "COMPLIANCE_REMEDY":
+      return `Instead: ${cause(str(data.recommendation, "—")).toLowerCase()}`;
+    case "EXCEPTION_LOGGED":
+      return `${str(data.category, "UNKNOWN")} — ${str(data.reason, "no reason recorded")}`;
+    case "RECOVERY_OBSERVED": {
+      const verdict = cause(str(data.attribution, "—"));
+      const webhook = str(data.event);
+      const amount = num(data.amount);
+      return `${verdict}${webhook ? ` on ${webhook}` : ""}, ${amount ? `${paise(amount)} booked` : "nothing booked"}`;
+    }
+    default: {
+      const action = cause(str(data.action, event.event_type));
+      const link = str(data.short_url);
+      const delay = num(data.delay_minutes);
+      if (link) return `${action} — ${link}`;
+      if (delay) return `${action}, waking in ${delay} minutes`;
+      return action;
+    }
+  }
+}
+
 /** The candidate strategies, scored by the posterior the bandit sampled from.
  *
  * Returns a single-entry list when the context has no arms yet — a cold bandit is a real
@@ -724,6 +802,7 @@ export async function getPayment(id: string): Promise<Result<PaymentDetails>> {
       reasoning: reasoning || undefined,
       guardrails: guardrailsFrom(trail, policy.ok ? policy.data : null),
       attribution: session?.attribution ?? null,
+      trail: trailFrom(trail),
     },
   };
 }

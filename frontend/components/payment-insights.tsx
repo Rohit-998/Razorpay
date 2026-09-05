@@ -77,6 +77,7 @@ export function PaymentInsights({ paymentId }: { paymentId: string }) {
   const actionScores = payment.actionScores ?? [];
   const maxActionScore = Math.max(...actionScores.map((item) => item.score), 0.01);
   const guardrails = payment.guardrails ?? [];
+  const trail = payment.trail ?? [];
 
   return (
     <AppShell active="feed">
@@ -155,6 +156,30 @@ export function PaymentInsights({ paymentId }: { paymentId: string }) {
               ? <ul>{guardrails.map((guardrail) => <li key={guardrail}><Check />{guardrail}</li>)}</ul>
               : <p className="simple-empty">No compliance decision has been recorded for this payment yet.</p>}
           </div>
+        </div>
+      </section>
+
+      {/* The trail itself, which no page rendered until now. `/payments/{id}` returned it all
+          along, so the one artefact the brief names outright was reachable only by curl — and a
+          card headed "Safety checks applied" is a claim about the trail, not the trail. Rows
+          keep the event type the store wrote and the number each decision turned on, because
+          three retries followed by a refusal is a different account of a payment than one line
+          saying it recovered. */}
+      <section className="simple-explanation-card">
+        <div className="simple-card-header">
+          <div>
+            <div className="simple-card-label"><b>4</b><span>THE AUDIT TRAIL</span></div>
+            <h2>Every decision, in the order it was made</h2>
+            <p>Append-only — {trail.length} {trail.length === 1 ? "event" : "events"}, written by the worker as it went. Nothing on this page was computed here.</p>
+          </div>
+        </div>
+        <div className="simple-explanation-list">
+          {trail.length ? trail.map((step, index) => (
+            <div className="simple-explanation-row" style={{ gridTemplateColumns: "260px 1fr" }} key={step.event + step.at + index}>
+              <div><b>{step.event}</b><span>{when(step.at)}</span></div>
+              <p>{step.detail}</p>
+            </div>
+          )) : <p className="simple-empty">No audit events have been written for this payment yet.</p>}
         </div>
       </section>
     </AppShell>
