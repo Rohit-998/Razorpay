@@ -367,14 +367,15 @@ def test_an_unconfigured_client_refuses_rather_than_inventing_a_link_id(
     """
     client = client_module.RazorpayClient()
     monkeypatch.setattr(client.settings, "razorpay_key_id", "")
-    result = _run(
+    link, refusal = _run(
         client.create_payment_link(
             amount=50_000_00, currency="INR", reference_id="pay_1",
             description="d", customer_contact="+919000000001",
             customer_email="someone@example.com",
         )
     )
-    assert result is None
+    assert link is None
+    assert "RAZORPAY_KEY_ID" in (refusal or ""), "the refusal names what is missing"
 
 
 def test_no_placeholder_link_id_survives_anywhere_in_the_client() -> None:
@@ -406,7 +407,7 @@ def test_a_link_that_could_not_be_created_is_not_credited_as_an_action(
     against the customer's daily budget, and the bandit updates on an arm that never fired.
     """
     async def no_link(**_kwargs):
-        return None
+        return None, "Razorpay answered 429: too many requests (gave up after 4 attempts)"
 
     monkeypatch.setattr(client_module.razorpay_client, "create_payment_link", no_link)
     assert not _run(
@@ -416,3 +417,125 @@ def test_a_link_that_could_not_be_created_is_not_credited_as_an_action(
     )
     assert acted.contacts == [], "a link that does not exist did not contact anyone"
     assert acted.exceptions
+    assert "429" in acted.exceptions[-1][0], (
+        "the exception ledger carries the reason, not just the fact — a throttle is a thing a "
+        "reviewer can fix and an unset key is a different thing"
+    )
+
+
+# ── The rate limit that made the provable path unreachable ────────────────────
+#
+# A live batch of 191 payments sent forty link creations inside four seconds. Razorpay answered
+# 429 to all but the first few, the client returned `None`, the executor logged an exception, and
+# `/batch/run` reported `processed: 191, errored: 0`. Nothing looked wrong anywhere. But
+# `PAYMENT_LINK_SENT` is the only audit event that can produce a `SYSTEM_RECOVERED` verdict, so
+# the throttle had quietly deleted the one recovery path the system can prove — and the
+# dashboard's headline sat at ₹0 while every other number moved.
+
+
+class _Reply:
+    """Just enough of `httpx.Response` for the client's own branching."""
+
+    def __init__(self, status: int, body: dict | None = None, headers: dict | None = None):
+        self.status_code = status
+        self._body = body if body is not None else {}
+        self.headers = headers or {}
+        self.reason_phrase = "Too Many Requests" if status == 429 else "Error"
+        self.text = str(self._body)
+
+    def json(self) -> dict:
+        return self._body
+
+
+def _serving(replies: list[_Reply], monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Point the client at a scripted sequence of replies. Returns the call log."""
+    calls: list[int] = []
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return False
+
+        async def post(self, *_a, **_k):
+            reply = replies[min(len(calls), len(replies) - 1)]
+            calls.append(reply.status_code)
+            return reply
+
+    monkeypatch.setattr(client_module.httpx, "AsyncClient", lambda *a, **k: _FakeClient())
+    # The waits are the point of the fix but not of the test; asserting on them here would
+    # spend fifteen real seconds proving arithmetic.
+    monkeypatch.setattr(client_module.asyncio, "sleep", _instant)
+    return calls
+
+
+async def _instant(_seconds):
+    return None
+
+
+def _link(client) -> tuple:
+    return _run(
+        client.create_payment_link(
+            amount=50_000_00, currency="INR", reference_id="pay_1", description="d",
+            customer_contact="+919000000001", customer_email="someone@example.com",
+        )
+    )
+
+
+def test_a_throttled_link_is_retried_rather_than_lost(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The whole defect in one test. Before the retry, this returned `(None, ...)` and the
+    payment's only provable recovery path was gone for the rest of the batch."""
+    client = client_module.RazorpayClient()
+    calls = _serving(
+        [_Reply(429), _Reply(429), _Reply(200, {"id": "plink_real", "short_url": "https://x"})],
+        monkeypatch,
+    )
+    link, refusal = _link(client)
+    assert refusal is None
+    assert link and link["id"] == "plink_real"
+    assert calls == [429, 429, 200], "it kept asking, and it stopped as soon as it succeeded"
+
+
+def test_a_persistent_throttle_gives_up_and_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bounded, because a queue of retries against a limit that is not lifting is a slower way
+    to fail. The reason names the status so the ledger is actionable."""
+    client = client_module.RazorpayClient()
+    calls = _serving([_Reply(429, {"error": {"description": "too many requests"}})], monkeypatch)
+    link, refusal = _link(client)
+    assert link is None
+    assert len(calls) == client_module.MAX_ATTEMPTS
+    assert "429" in refusal and "too many requests" in refusal
+    assert str(client_module.MAX_ATTEMPTS) in refusal
+
+
+def test_a_rejected_request_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 400 is a malformed request; sending it again spends another slot on the same
+    rejection — and under a rate limit those slots are what the next link needs."""
+    client = client_module.RazorpayClient()
+    calls = _serving(
+        [_Reply(400, {"error": {"description": "Recurring digits in customer contact are disallowed"}})],
+        monkeypatch,
+    )
+    link, refusal = _link(client)
+    assert link is None
+    assert calls == [400], "one attempt, because the second would be rejected identically"
+    assert "Recurring digits" in refusal, "Razorpay's own sentence, not ours"
+
+
+def test_writes_are_spaced_so_a_batch_does_not_arrive_as_a_burst(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The retry recovers from a throttle; the spacing is what keeps the batch from causing one.
+    Asserted on the gate itself, because the observable effect is elapsed time."""
+    client = client_module.RazorpayClient()
+    waited: list[float] = []
+
+    async def record(seconds):
+        waited.append(seconds)
+
+    monkeypatch.setattr(client_module.asyncio, "sleep", record)
+    monkeypatch.setattr(client_module.time, "monotonic", lambda: 100.0)
+    client._last_write = 100.0  # a write just happened
+    _run(client._space_out())
+    assert waited == [pytest.approx(client_module.MIN_INTERVAL_SECONDS)]

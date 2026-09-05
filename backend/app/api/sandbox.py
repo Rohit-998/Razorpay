@@ -40,6 +40,12 @@ import structlog
 from fastapi import APIRouter, HTTPException
 
 from app.api.webhooks import _record_recovery
+from app.audit.event_store import (
+    ACTION_EVENTS_READ,
+    PAYMENT_LINK_SENT,
+    action_of,
+    is_customer_facing,
+)
 from app.config import get_settings
 from app.db.database import select_all
 from app.sim.customer import PERSONAS
@@ -47,11 +53,19 @@ from app.sim.customer import PERSONAS
 logger = structlog.get_logger()
 router = APIRouter()
 
-CONTACT_EVENTS = ("PAYMENT_LINK_SENT", "RETRY_ATTEMPTED", "ESCALATED")
-"""The audit events that mean we actually reached out. A session with none of these has had
-nothing done to it, so there is no outcome to observe — it is not eligible."""
+CONTACT_EVENTS = ACTION_EVENTS_READ
+"""The audit events that mean we actually acted. A session with none of these has had nothing
+done to it, so there is no outcome to observe — it is not eligible.
 
-LINK_EVENT = "PAYMENT_LINK_SENT"
+Imported rather than restated. This tuple used to be a local literal, and the moment
+`event_store` stopped writing `RETRY_ATTEMPTED` for everything, a private copy of the vocabulary
+would have gone stale the same way `webhooks._last_contact_at`'s did — silently, while every
+count kept moving. `ACTION_EVENTS_READ` is also what attribution filters on, which matters here
+for a second reason: the instant this endpoint anchors `paid_at` to has to be the same instant
+`attribute()` measures the gap from, or the two disagree about the window.
+"""
+
+LINK_EVENT = PAYMENT_LINK_SENT
 """The only action that can produce a `SYSTEM_RECOVERED` verdict, because it is the only one
 that puts a link carrying `reference_id` in front of the customer. A retry that succeeds is a
 capture on our side; a customer who pays after an escalation pays on their own channel."""
@@ -75,7 +89,7 @@ def _draw(payment_id: str, salt: str) -> float:
     return int.from_bytes(digest[:8], "big") / float(1 << 64)
 
 
-def _responsiveness(persona, contacts_before: int) -> float:
+def _responsiveness(persona, messages_before: int) -> float:
     """The chance this customer acts on a message we sent.
 
     The channel is not read from the audit trail because nothing records it — the executor
@@ -86,9 +100,13 @@ def _responsiveness(persona, contacts_before: int) -> float:
 
     Fatigue is real and applied: the third message lands at `fatigue_decay ** 2` of the first,
     which is what stops the feed from rewarding a system that contacts people repeatedly.
+    `messages_before` counts only the customer-facing actions, because a retry is a server-side
+    call to the gateway. Counting retries as fatigue would have this endpoint punish a strategy
+    the customer never saw, and it would disagree with `compliance.py`, which does not spend a
+    contact slot on one either.
     """
     best = max(persona.channel_response.values())
-    return best * (persona.fatigue_decay ** max(0, contacts_before))
+    return best * (persona.fatigue_decay ** max(0, messages_before))
 
 
 def _parse(stamp: str | None) -> datetime | None:
@@ -174,7 +192,7 @@ async def deliver_outcomes(limit: int = 200):
             "recovery_sessions", "id, payment_id, status, created_at"
         )
         if row.get("status") != "RECOVERED" and row.get("payment_id")
-    ][:limit]
+    ]
     if not sessions:
         return {"status": "no_data", "message": "No unresolved recovery sessions."}
 
@@ -186,40 +204,50 @@ async def deliver_outcomes(limit: int = 200):
         if event.get("event_type") in CONTACT_EVENTS and event.get("payment_id"):
             by_payment.setdefault(event["payment_id"], []).append(event)
 
+    # Eligibility is decided before the limit, not inside the loop, because the two orders give
+    # different answers and one of them is wrong. This table holds 502 sessions that failed
+    # outright and were never contacted; they sort ahead of the ones `/batch/run` had just
+    # acted on. Slicing first spent the whole budget of 250 on rows with no outcome to observe
+    # and reported `status: complete` with three zeros — a finished run in which nothing
+    # happened. `never_contacted` below is that exclusion, counted against the full set rather
+    # than against the page.
+    eligible = [row for row in sessions if by_payment.get(row["payment_id"])]
+    never_contacted = len(sessions) - len(eligible)
+    considered = eligible[:limit]
+
     orders = {
         row["payment_id"]: row.get("order_id")
         for row in select_all("payments", "payment_id, order_id")
     }
 
     outcomes = {"paid_on_our_link": 0, "paid_their_own_way": 0, "no_response": 0}
-    skipped = {"never_contacted": 0, "already_closed_elsewhere": 0}
+    skipped = {"never_contacted": never_contacted, "already_closed_elsewhere": 0}
     verdicts: dict[str, int] = {}
 
-    for session in sessions:
+    for session in considered:
         payment_id = session["payment_id"]
         contacts = sorted(
             by_payment.get(payment_id, []), key=lambda e: e.get("created_at") or ""
         )
-        if not contacts:
-            skipped["never_contacted"] += 1
-            continue
 
         persona = _persona_for(payment_id)
         last = contacts[-1]
         contacted_at = _parse(last.get("created_at")) or datetime.utcnow()
+        # Only the actions the customer could see decay their willingness to act on the next
+        # one; `-1` because the message being responded to is not one of the ones that tired
+        # them out.
+        messages_before = sum(1 for event in contacts if is_customer_facing(event)) - 1
 
         # Question one: did our message work? Drawn against the persona's own click-through,
         # decayed by how many times we had already written to them.
-        acts_on_us = _draw(payment_id, "click") < _responsiveness(
-            persona, len(contacts) - 1
-        )
+        acts_on_us = _draw(payment_id, "click") < _responsiveness(persona, messages_before)
         # Question two, asked independently: would they have come back on their own? This is
         # the counterfactual the whole project is about, and it is deliberately not
         # conditioned on our actions — a customer with high self-recover propensity pays
         # whether or not we did anything, and the system must not be credited for it.
         self_recovers = _draw(payment_id, "self") < persona.self_recover_propensity
 
-        if acts_on_us and last.get("event_type") == LINK_EVENT:
+        if acts_on_us and action_of(last) == LINK_EVENT:
             event = "payment_link.paid"
             # Clicking through takes minutes to hours, not days.
             paid_at = contacted_at + timedelta(minutes=12 + int(_draw(payment_id, "lag") * 180))
@@ -252,7 +280,9 @@ async def deliver_outcomes(limit: int = 200):
     logger.info("sandbox.outcomes_delivered", **outcomes, verdicts=verdicts)
     return {
         "status": "complete",
-        "sessions_considered": len(sessions),
+        "sessions_unresolved": len(sessions),
+        "sessions_eligible": len(eligible),
+        "sessions_considered": len(considered),
         "customer_behaviour": outcomes,
         "skipped": skipped,
         "verdicts": verdicts,

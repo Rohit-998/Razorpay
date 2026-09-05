@@ -68,12 +68,23 @@ def _session(payment_id: str) -> dict:
     }
 
 
-def _contact(payment_id: str, event_type: str, at: datetime = CONTACTED_AT) -> dict:
+def _contact(
+    payment_id: str,
+    event_type: str,
+    at: datetime = CONTACTED_AT,
+    action: str | None = None,
+) -> dict:
+    """One row of the audit trail.
+
+    `action` fills `event_data["action"]`, which is where the store used to file the real name
+    of an action while stamping every row `RETRY_ATTEMPTED`. Rows in that shape are still in the
+    live table and cannot be rewritten, so the readers have to resolve them.
+    """
     return {
         "payment_id": payment_id,
         "event_type": event_type,
         "created_at": at.isoformat(),
-        "event_data": {},
+        "event_data": {"action": action} if action else {},
     }
 
 
@@ -89,6 +100,10 @@ def bench(monkeypatch: pytest.MonkeyPatch):
     calls: list[dict] = []
 
     def build(sessions: list[dict], events: list[dict], *, env: str = "development"):
+        # A bench rebuilt for a second scenario starts empty. Two `build` calls in one test are
+        # two separate runs, and a shared list would have the second one's assertions reading
+        # the first one's calls — including a comparison of a list against itself.
+        calls.clear()
         db = _FakeDB({
             "recovery_sessions": sessions,
             "audit_events": events,
@@ -311,9 +326,105 @@ def test_only_a_link_can_produce_a_provable_recovery(bench) -> None:
     payments = [f"pay_{i:04d}" for i in range(40)]
     calls = bench(
         [_session(p) for p in payments],
-        [_contact(p, "RETRY_ATTEMPTED") for p in payments],
+        [_contact(p, "RETRY_SCHEDULED") for p in payments],
     )
     served = _run(sandbox.deliver_outcomes())
     assert served["customer_behaviour"]["paid_on_our_link"] == 0
     assert all(c["event"] == "payment.captured" for c in calls)
     assert attribution.SYSTEM_RECOVERED not in served["verdicts"]
+
+
+def test_a_link_written_under_the_old_event_name_is_still_a_link(bench) -> None:
+    """The audit log is append-only, so the fix to the writer cannot reach rows already in it.
+
+    Every action used to be stamped `RETRY_ATTEMPTED` with its real name in
+    `event_data["action"]`, and 118 rows in this project's database are in that shape. If the
+    readers matched only the new names, those payment links would read as retries forever — the
+    same defect the writer fix removed, arrived at from the reader's side. `event_store.action_of`
+    resolves both, and this asserts the two shapes reach the same verdict.
+    """
+    payments = [f"pay_{i:04d}" for i in range(40)]
+
+    recorded = bench(
+        [_session(p) for p in payments],
+        [_contact(p, "PAYMENT_LINK_SENT") for p in payments],
+    )
+    new_style = _run(sandbox.deliver_outcomes())
+    modern = [c["verdict"] for c in recorded]
+
+    recorded = bench(
+        [_session(p) for p in payments],
+        [_contact(p, "RETRY_ATTEMPTED", action="PAYMENT_LINK_SENT") for p in payments],
+    )
+    old_style = _run(sandbox.deliver_outcomes())
+    legacy = [c["verdict"] for c in recorded]
+
+    assert new_style["customer_behaviour"]["paid_on_our_link"] > 0, "the fixture must click"
+    assert old_style["customer_behaviour"] == new_style["customer_behaviour"]
+    assert legacy == modern
+
+
+def test_a_server_side_retry_does_not_tire_the_customer_out(bench) -> None:
+    """Fatigue is spent by messages, not by calls to a gateway.
+
+    Three retries and then a link is one message, so the link should land at full
+    responsiveness. Counting the retries would decay it by `fatigue_decay ** 3` and make the
+    sandbox punish a strategy the customer never saw — and it would disagree with
+    `compliance.py`, which does not charge a retry against the daily contact budget either.
+    """
+    payments = [f"pay_{i:04d}" for i in range(40)]
+
+    bench(
+        [_session(p) for p in payments],
+        [_contact(p, "PAYMENT_LINK_SENT", at=CONTACTED_AT + timedelta(hours=3)) for p in payments],
+    )
+    alone = _run(sandbox.deliver_outcomes())
+
+    bench(
+        [_session(p) for p in payments],
+        [
+            row
+            for p in payments
+            for row in (
+                _contact(p, "RETRY_SCHEDULED", at=CONTACTED_AT),
+                _contact(p, "IMMEDIATE_RETRY_MOCKED", at=CONTACTED_AT + timedelta(hours=1)),
+                _contact(p, "DELAYED_RETRY_WOKE_UP", at=CONTACTED_AT + timedelta(hours=2)),
+                _contact(p, "PAYMENT_LINK_SENT", at=CONTACTED_AT + timedelta(hours=3)),
+            )
+        ],
+    )
+    after_retries = _run(sandbox.deliver_outcomes())
+
+    assert alone["customer_behaviour"]["paid_on_our_link"] > 0
+    assert (
+        after_retries["customer_behaviour"]["paid_on_our_link"]
+        == alone["customer_behaviour"]["paid_on_our_link"]
+    )
+
+
+def test_a_second_message_lands_on_a_tireder_customer(bench) -> None:
+    """The other half of the same rule: two links *are* two messages, and the second one is
+    answered less often. Without this the test above would also pass on code that ignored
+    fatigue entirely."""
+    payments = [f"pay_{i:04d}" for i in range(120)]
+
+    bench(
+        [_session(p) for p in payments],
+        [_contact(p, "PAYMENT_LINK_SENT", at=CONTACTED_AT + timedelta(hours=3)) for p in payments],
+    )
+    once = _run(sandbox.deliver_outcomes())["customer_behaviour"]["paid_on_our_link"]
+
+    bench(
+        [_session(p) for p in payments],
+        [
+            row
+            for p in payments
+            for row in (
+                _contact(p, "PAYMENT_LINK_SENT", at=CONTACTED_AT),
+                _contact(p, "PAYMENT_LINK_SENT", at=CONTACTED_AT + timedelta(hours=3)),
+            )
+        ],
+    )
+    twice = _run(sandbox.deliver_outcomes())["customer_behaviour"]["paid_on_our_link"]
+
+    assert twice < once, "the second message must be answered less often than the first"

@@ -68,7 +68,7 @@ class RecoveryExecutor:
 
             expire_by = int(time.time()) + (24 * 3600)  # 24 hours from now
 
-            link_data = await razorpay_client.create_payment_link(
+            link_data, refusal = await razorpay_client.create_payment_link(
                 amount=payment.amount,
                 currency=payment.currency,
                 reference_id=payment.payment_id,
@@ -80,7 +80,7 @@ class RecoveryExecutor:
 
             if link_data:
                 event_store.log_recovery_attempt(
-                    session_id, payment.payment_id, "PAYMENT_LINK_SENT", 
+                    session_id, payment.payment_id, "PAYMENT_LINK_SENT",
                     {"link_id": link_data.get("id"), "short_url": link_data.get("short_url")}
                 )
                 await compliance_engine.record_contact(
@@ -88,7 +88,17 @@ class RecoveryExecutor:
                 )
                 return True
             else:
-                event_store.log_exception(session_id, payment.payment_id, "Failed to create payment link", "EXECUTION_ERROR")
+                # The reason, not just the fact. `Failed to create payment link` was the whole
+                # entry for a rate limit, a rejected phone number and an unset key alike — and
+                # the first of those is a throttle a reviewer can fix, while the last is a
+                # missing environment variable. This is the only path that can produce a
+                # provable recovery, so the ledger should say why it did not.
+                event_store.log_exception(
+                    session_id,
+                    payment.payment_id,
+                    f"no payment link: {refusal or 'the API returned nothing'}",
+                    "EXECUTION_ERROR",
+                )
                 return False
 
         # 4. ESCALATE

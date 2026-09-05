@@ -19,6 +19,7 @@ from app.config import get_settings
 from app.cache.redis_client import redis_client
 from app.db.database import get_supabase
 from app.execution import attribution
+from app.audit import event_store as event_store_module
 from app.models.schemas import FailedPayment, PaymentMethod, ErrorSource
 from datetime import datetime
 from arq import create_pool
@@ -281,12 +282,21 @@ async def _record_recovery(event: str, payload: dict) -> dict:
 
 
 async def _last_contact_at(payment_id: str) -> datetime | None:
-    """When we last messaged or phoned this customer, from the audit trail.
+    """When we last acted on this payment, from the audit trail.
 
     Read from `audit_events` rather than a counter, because the attribution window is a
     question about a specific instant and a counter only knows totals. The events it
-    looks for are the ones `executor.py` writes when a contact actually goes out, so a
+    looks for are the ones `executor.py` writes when an action actually goes out, so a
     decision that was blocked before execution correctly leaves no trace here.
+
+    The filter used to name `["PAYMENT_LINK_SENT", "ESCALATION"]`, and matched neither: the
+    event store stamped every action `RETRY_ATTEMPTED`, and escalations are `ESCALATED`. So
+    this returned `None` for every payment, `attribute()` had no instant to compare against,
+    and every capture that was not on a link fell through to `CUSTOMER_SELF_RECOVERED` — the
+    ambiguity window, which exists precisely so the system does not claim what it cannot
+    prove, was never once applied. `event_store.ACTION_EVENTS_READ` is now the single list
+    both sides read, and it carries the old name too so rows written before the fix still
+    count as having been acted on.
     """
     db = get_supabase()
     try:
@@ -294,7 +304,7 @@ async def _last_contact_at(payment_id: str) -> datetime | None:
             db.table("audit_events")
             .select("created_at")
             .eq("payment_id", payment_id)
-            .in_("event_type", ["PAYMENT_LINK_SENT", "ESCALATION"])
+            .in_("event_type", list(event_store_module.ACTION_EVENTS_READ))
             .order("created_at", desc=True)
             .limit(1)
             .execute()
